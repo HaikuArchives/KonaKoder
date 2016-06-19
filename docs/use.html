@@ -1,0 +1,32 @@
+<html>
+<title>Using KonaKoder</title>
+<h1>Using KonaKoder</h1>
+KonaKoder is designed to be simple to use. Once it is all set up, encoding a CD can be as easy as clicking on two buttons. 
+<h2>Running KonaKoder for the first time</h2>
+The first time you run KonaKoder, it will display a series of alert boxes to let you know what it's doing. In most cases, you will only see these the first time you run KonaKoder. There are two main things it checks when it runs. First, it double checks your saved preferences, and let's you know if it can't find any of them. Second, it checks for some attribute information. I'll give a quick rundown of what it's doing. More detail can be found in <a href="detail.html">Under The Hood</a>
+<ul>
+<li>KonaKoder checks your preferences for a CD player. The current version only remembers one CD player. Future versions may be able to handle multiple players. A CD player is required for KonaKoder to work
+<li>Next it checks your preferences for a CDDB server. You don't have to set one, but it does make KonaKoder easier to use.
+<li>KonaKoder checks for a default bitrate in your preferences.
+<li>KonaKoder needs to know where to save your MP3 files. It sets the default to <pre>/boot/home/Music.</pre> You can use this directory, or choose a new one in the Preferences window.
+<li>A unique feature of KonaKoder is the Template directory. Whenever it encodes a CD, it sets the layout of the new directory to match the layout of the template directory. This is because the default Tracker view of a directory does not display any of the attributes that KonaKoder adds to your MP3 files. Once you set up your template directory the way you like it, all new CD's that you encode will have the same layout. You will find a sample Template directory in the KonaKoder distribution. Just move or copy it to the location that you set in the Preferences window.
+<li>KonaKoder creates a default list of genres. It contains a dozen or so sample genres. You can edit this list using the Preferences window.
+<li>Next KonaKoder checks for some indexes. These make it faster to search through your MP3 files. It will ask you if you would like to create the indexes if they don't already exist. You may not see this alert if you these indexes already exist. You should probably answer "Yes", and let KonaKoder create these for you.
+<li>Finally, KonaKoder checks to see if the Tracker knows how to display the MP3 attributes. Once again, you should probably answer "Yes", and let KonaKoder teach the Tracker how to display the attributes.
+</ul>
+You should now see the KonaKoder main window. The first thing you should do is click on the "Preferences..." button, and check your settings. You can specify the directory to save songs in either by typing in the name or using the "Browse..." button. The Template directory is set the same way. If you wish to use a CDDB server, you should set it in here also.
+<p>
+The genre list can also be edited in this window. To add a new genre, type the name into the "Genre To Add:" box, and click "Add It!". To remove a genre, select it in the list and click "Remove Selected Genre".
+<p>
+The bottom three buttons allow you to save your changes. Click "Revert" to undo any changes you just made in the window. Click "Cancel" to close the Preferences window without saving your changes. Click "OK" to close the window and save your changes.
+<h2>Using KonaKoder</h2>
+Now that your preferences are all set, you are ready to encode a CD. First, place your CD into the CD player if you haven't already done so. Next, click on the "Scan CD" button. If you are using a CDDB server, you should see the "Artist", "Title", and "Track" controls filled in with the appropriate information. You will also want to set the "Year", "Genre", and "Bitrate" controls.
+<p>
+Once everything is set to your liking, you are ready to encode your CD. Just click on the "Start Encoding" button to get started. KonaKoder will take over from there, The progress bar at the bottom of the window will let you know how it's doing. Depending on your computer, encoding a CD may take quite a while. On my BeBox 133Mhz, it takes six or seven hours. KonaKoder runs at a low priority, so it shouldn't interfere with any other work you are doing while it's encoding.
+<p>
+After it gets done, you can check out the results. In your "Save" directory, you will have a directory with the name of the artist. Inside of that, you will have a directory with name of the album. If you open that up, you should see all of your MP3 songs for that album. If your template directory is set up properly, all of the tracks should be listed in order.
+<p>
+To encode another CD, just place it in the CD player, hit "Scan CD", and start the process over again. What could be simpler?
+<p>
+Copyright 1999 David Mitchell
+</html>

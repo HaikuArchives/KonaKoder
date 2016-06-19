@@ -1,0 +1,2468 @@
+Only in ./8hz-mp3: Makefile
+Only in ./8hz-mp3: README.8hz-mp3
+Only in ./8hz-mp3: README.Development
+diff -bBru -1 ./8hz-mp3/bitstream.c ./8hz-mp3-mine/bitstream.c
+--- ./8hz-mp3/bitstream.c	Tue May 12 11:48:25 1998
++++ ./8hz-mp3-mine/bitstream.c	Sun Aug 15 02:52:09 1999
+@@ -4,7 +4,9 @@
+ #include <malloc.h>
+-
+-#include "types.h"
+-#include "error.h"
+-#include "bitstream.h"
+-
++#include <stdio.h>
++#include "MP3Encoder.h"
++#include "util.h"
++
++const int EncoderInterface::putmask[9] ={0x0, 0x1, 0x3, 0x7, 0xf, 0x1f, 0x3f, 0x7f, 0xff};
++const int EncoderInterface::clearmask[9]={0xff, 0xfe, 0xfc, 0xf8, 0xf0, 0xe0, 0xc0, 0x80, 0x0};
++const int EncoderInterface::mask[8]={0x1, 0x2, 0x4, 0x8, 0x10, 0x20, 0x40, 0x80};
+ /*****************************************************************************
+@@ -47,4 +49,3 @@
+ /* refill the buffer from the input device when the buffer becomes empty    */
+-int refill_buffer(bs)
+-bitstream_t *bs;   /* bit stream structure */
++int EncoderInterface::refill_buffer(bitstream_t *bs)
+ {
+@@ -102,5 +103,3 @@
+ /* empty the buffer to the output device when the buffer becomes full */
+-void empty_buffer(bs, minimum)
+-bitstream_t *bs;   /* bit stream structure */
+-int minimum;            /* end of the buffer to empty */
++void EncoderInterface::empty_buffer(bitstream_t *bs, int minimum)
+ {
+@@ -108,13 +107,5 @@
+ 
+-#if BS_FORMAT == BINARY
+    for (i=bs->buf_size-1;i>=minimum;i--)
+       fwrite(&bs->buf[i], sizeof(unsigned char), 1, bs->pt);
+-#else
+-   for (i=bs->buf_size-1;i>=minimum;i--) {
+-       char val[2];
+-       val[0] = he[((bs->buf[i] >> 4) & 0x0F)];
+-       val[1] = he[(bs->buf[i] & 0x0F)];
+-       fwrite(val, sizeof(char), 2, bs->pt);
+-   }
+-#endif
++
+ fflush(bs->pt); /* NEW SS to assist in debugging*/
+@@ -129,11 +120,12 @@
+ /* open the device to write the bit stream into it */
+-void open_bit_stream_w(bs, bs_filenam, size)
+-bitstream_t *bs;   /* bit stream structure */
+-char *bs_filenam;       /* name of the bit stream file */
+-int size;               /* size of the buffer */
++void EncoderInterface::open_bit_stream_w(bitstream_t *bs, char *bs_filenam, int size)
++
+ {
+    if ((bs->pt = fopen(bs_filenam, "wb")) == NULL) {
+-      printf("Could not create \"%s\".\n", bs_filenam);
++      char s[22 + B_FILE_NAME_LENGTH];
++      sprintf(s, "Could not create \"%s\".\n", bs_filenam);
++      aerror("", s);
+       exit(1);
+-   }
++   };
++   
+    alloc_buffer(bs, size);
+@@ -148,6 +140,4 @@
+ /* open the device to read the bit stream from it */
+-void open_bit_stream_r(bs, bs_filenam, size)
+-bitstream_t *bs;   /* bit stream structure */
+-char *bs_filenam;       /* name of the bit stream file */
+-int size;               /* size of the buffer */
++void EncoderInterface::open_bit_stream_r(bitstream_t *bs, char *bs_filenam, int size)
++
+ {
+@@ -219,4 +209,3 @@
+ /*close the device containing the bit stream after a read process*/
+-void close_bit_stream_r(bs)
+-bitstream_t *bs;   /* bit stream structure */
++void EncoderInterface::close_bit_stream_r(bitstream_t *bs)
+ {
+@@ -227,4 +216,3 @@
+ /*close the device containing the bit stream after a write process*/
+-void close_bit_stream_w(bs)
+-bitstream_t *bs;   /* bit stream structure */
++void EncoderInterface::close_bit_stream_w(bitstream_t *bs)
+ {
+@@ -236,5 +224,4 @@
+ /*open and initialize the buffer; */
+-void alloc_buffer(bs, size)
+-bitstream_t *bs;   /* bit stream structure */
+-int size;
++void EncoderInterface::alloc_buffer(bitstream_t *bs, int size)
++
+ {
+@@ -245,4 +232,3 @@
+ /*empty and close the buffer */
+-void desalloc_buffer(bs)
+-bitstream_t *bs;   /* bit stream structure */
++void EncoderInterface::desalloc_buffer(bitstream_t *bs)
+ {
+@@ -251,8 +237,5 @@
+ 
+-int putmask[9]={0x0, 0x1, 0x3, 0x7, 0xf, 0x1f, 0x3f, 0x7f, 0xff};
+-int clearmask[9]={0xff, 0xfe, 0xfc, 0xf8, 0xf0, 0xe0, 0xc0, 0x80, 0x0};
+ 
+-void back_track_buffer(bs, N) /* goes back N bits in the buffer */
+-bitstream_t *bs;   /* bit stream structure */
+-int N;
++void EncoderInterface::back_track_buffer(bitstream_t *bs, int N) /* goes back N bits in the buffer */
++
+ {
+@@ -274,7 +257,5 @@
+ 
+-int mask[8]={0x1, 0x2, 0x4, 0x8, 0x10, 0x20, 0x40, 0x80};
+ 
+ /*read 1 bit from the bit stream */
+-unsigned int get1bit(bs)
+-bitstream_t *bs;   /* bit stream structure */
++unsigned int EncoderInterface::get1bit(bitstream_t *bs)
+ {
+@@ -306,5 +287,4 @@
+ /*write 1 bit from the bit stream */
+-void put1bit(bs, bit)
+-bitstream_t *bs;   /* bit stream structure */
+-int bit;                /* bit to write into the buffer */
++void EncoderInterface::put1bit(bitstream_t *bs, int bit)
++         /* bit to write into the buffer */
+ {
+@@ -324,5 +304,4 @@
+ /*look ahead for the next N bits from the bit stream */
+-unsigned long look_ahead(bs, N)
+-bitstream_t *bs;   /* bit stream structure */
+-int N;                  /* number of bits to read from the bit stream */
++unsigned long EncoderInterface::look_ahead(bitstream_t *bs, int N)
++
+ {
+@@ -342,3 +321,3 @@
+     }
+-    k = MIN (j, bit_idx);
++    k = min_c (j, bit_idx);
+     tmp = bs->buf[byte_idx]&putmask[bit_idx];
+@@ -353,5 +332,3 @@
+ /*read N bit from the bit stream */
+-unsigned long getbits(bs, N)
+-bitstream_t *bs;   /* bit stream structure */
+-int N;                  /* number of bits to read from the bit stream */
++unsigned long EncoderInterface::getbits(bitstream_t *bs, int N)
+ {
+@@ -381,3 +358,3 @@
+    }
+-   k = MIN (j, bs->buf_bit_idx);
++   k = min_c (j, bs->buf_bit_idx);
+    tmp = bs->buf[bs->buf_byte_idx]&putmask[bs->buf_bit_idx];
+@@ -392,6 +369,3 @@
+ /*write N bits into the bit stream */
+-void putbits(bs, val, N)
+-bitstream_t *bs;   /* bit stream structure */
+-unsigned int val;       /* val to write into the buffer */
+-int N;                  /* number of bits of val */
++void EncoderInterface::putbits(bitstream_t *bs, unsigned int val, int N)
+ {
+@@ -405,3 +379,3 @@
+  while (j > 0) {
+-   k = MIN(j, bs->buf_bit_idx);
++   k = min_c(j, bs->buf_bit_idx);
+    tmp = val >> (j-k);
+@@ -421,8 +395,5 @@
+ /*write N bits byte aligned into the bit stream */
+-void byte_ali_putbits(bs, val, N)
+-bitstream_t *bs;   /* bit stream structure */
+-unsigned int val;       /* val to write into the buffer */
+-int N;                  /* number of bits of val */
++void EncoderInterface::byte_ali_putbits(bitstream_t *bs, unsigned int val, int N)
+ {
+- unsigned long aligning, sstell();
++ unsigned long aligning;//, sstell();
+ 
+@@ -438,7 +409,5 @@
+ /*read the next bute aligned N bits from the bit stream */
+-unsigned long byte_ali_getbits(bs, N)
+-bitstream_t *bs;   /* bit stream structure */
+-int N;                  /* number of bits of val */
++unsigned long EncoderInterface::byte_ali_getbits(bitstream_t *bs, int N)
+ {
+- unsigned long aligning, sstell();
++ unsigned long aligning;//, sstell();
+ 
+@@ -454,4 +423,3 @@
+ /*return the current bit stream length (in bits)*/
+-unsigned long sstell(bs)
+-bitstream_t *bs;   /* bit stream structure */
++unsigned long EncoderInterface::sstell(bitstream_t *bs)
+ {
+@@ -463,4 +431,3 @@
+ /* returns 0 if end of bit stream was not reached */
+-int end_bs(bs)
+-bitstream_t *bs;   /* bit stream structure */
++int EncoderInterface::end_bs(bitstream_t *bs)
+ {
+@@ -472,6 +439,3 @@
+   This function returns 1 if the sync was found otherwise it returns 0  */
+-int seek_sync(bs, sync, N)
+-bitstream_t *bs;   /* bit stream structure */
+-long sync;      /* sync word maximum 32 bits */
+-int N;          /* sync word length */
++int EncoderInterface::seek_sync(bitstream_t *bs, long sync, int N)
+ {
+@@ -501,7 +465,4 @@
+ #define BUFSIZE 4096
+-static unsigned long offset,totbit=0, buf_byte_idx=0;
+-static unsigned int buf[BUFSIZE];
+-static unsigned int buf_bit_idx=8;
+ 
+-unsigned long hgetbits(int N)
++unsigned long EncoderInterface::hgetbits(int N)
+ {
+@@ -518,3 +479,3 @@
+    }
+-   k = MIN (j, buf_bit_idx);
++   k = min_c (j, buf_bit_idx);
+    tmp = buf[buf_byte_idx%BUFSIZE]&putmask[buf_bit_idx];
+diff -bBru -1 ./8hz-mp3/bitstream.h ./8hz-mp3-mine/bitstream.h
+--- ./8hz-mp3/bitstream.h	Tue May 12 11:48:25 1998
++++ ./8hz-mp3-mine/bitstream.h	Mon Nov 30 21:55:33 1998
+@@ -5,63 +5,8 @@
+ 
+-typedef struct  bit_stream_struc {
+-    FILE        *pt;            /* pointer to bit stream device */
+-    unsigned char *buf;         /* bit stream buffer */
+-    int         buf_size;       /* size of buffer (in number of bytes) */
+-    long        totbit;         /* bit counter of bit stream */
+-    int         buf_byte_idx;   /* pointer to top byte in buffer */
+-    int         buf_bit_idx;    /* pointer to top bit of top byte in buffer */
+-    int         mode;           /* bit stream open in read or write mode */
+-    int         eob;            /* end of buffer index */
+-    int         eobs;           /* end of bit stream flag */
+-    char        format;
+-    
+-    /* format of file in rd mode (BINARY/ASCII) */
+-} bitstream_t;
+-
+-/* "bit_stream.h" Definitions */
+-
+-#define         MINIMUM         4    /* Minimum size of the buffer in bytes */
+-#define         MAX_LENGTH      32   /* Maximum length of word written or
+-                                        read from bit stream */
+-#define         READ_MODE       0
+-#define         WRITE_MODE      1
+-#define         ALIGNING        8
+-#define         BINARY          0
+-#define         ASCII           1
+-
+-#define         TRUE            1
+-#define         FALSE           0
+-
+-#ifndef BS_FORMAT
+-#define         BS_FORMAT       ASCII /* BINARY or ASCII = 2x bytes */
+-#endif
+-
+-#define         BUFFER_SIZE     4096
+-
+-#define         MIN(A, B)       ((A) < (B) ? (A) : (B))
+-#define         MAX(A, B)       ((A) > (B) ? (A) : (B))
+-
+-
+-int refill_buffer(bitstream_t *bs);
+-void empty_buffer(bitstream_t *bs,int minimum);
+-void open_bit_stream_w(bitstream_t *bs,char *bs_filenam,int size);
+-void open_bit_stream_r(bitstream_t *bs,char *bs_filenam,int size);
+-void close_bit_stream_r(bitstream_t *bs);
+-void close_bit_stream_w(bitstream_t *bs);
+-void alloc_buffer(bitstream_t *bs,int size);
+-void desalloc_buffer(bitstream_t *bs);
+-void back_track_buffer(bitstream_t *bs,int N);
+-unsigned int get1bit(bitstream_t *bs);
+-void put1bit(bitstream_t *bs,int bit);
+-unsigned long look_ahead(bitstream_t *bs,int N);
+-unsigned long getbits(bitstream_t *bs,int N);
+-void putbits(bitstream_t *bs,unsigned int val,int N);
+-void byte_ali_putbits(bitstream_t *bs,unsigned int val,int N);
+-unsigned long byte_ali_getbits(bitstream_t *bs,int N);
+-unsigned long sstell(bitstream_t *bs);
+-int end_bs(bitstream_t *bs);
+-int seek_sync(bitstream_t *bs,long sync,int N);
+ 
+-unsigned long hgetbits(int N);
+-#define  hget1bit() hgetbits(1)
++
++
++
++
++
+ 
+diff -bBru -1 ./8hz-mp3/fft.c ./8hz-mp3-mine/fft.c
+--- ./8hz-mp3/fft.c	Tue May 12 11:48:25 1998
++++ ./8hz-mp3-mine/fft.c	Tue Apr  6 13:51:55 1999
+@@ -1,5 +1,3 @@
+ #include <string.h>
+-#include "types.h"
+-#include "l3psy.h"
+-#include "layer3.h"
++#include "MP3Encoder.h"
+ 
+@@ -30,10 +28,11 @@
+ 
+-void fft(x_real,x_imag, energy, phi, N)
+-float x_real[BLKSIZE], x_imag[BLKSIZE], energy[BLKSIZE], phi[BLKSIZE];
+-int	N;
++void EncoderInterface::fft(
++	float x_real[BLKSIZE], 
++	float x_imag[BLKSIZE], 
++	float energy[BLKSIZE], 
++	float phi[BLKSIZE],
++	int	N)
+ {
+  int     M,MM1;
+- static int     init=0;
+  int     NV2, NM1, MP;
+- static double  w_real[2][LOGBLKSIZE], w_imag[2][LOGBLKSIZE];
+  int            i,j,k,L;
+@@ -49,4 +48,4 @@
+        le1 = le >> 1;
+-       w_real[0][L] = cos(PI/le1);
+-       w_imag[0][L] = -sin(PI/le1);
++       w_real[0][L] = cos(M_PI/le1);
++       w_imag[0][L] = -sin(M_PI/le1);
+     }          
+@@ -56,4 +55,4 @@
+        le1 = le >> 1;
+-       w_real[1][L] = cos(PI/le1);
+-       w_imag[1][L] = -sin(PI/le1);
++       w_real[1][L] = cos(M_PI/le1);
++       w_imag[1][L] = -sin(M_PI/le1);
+     }          
+diff -bBru -1 ./8hz-mp3/fft.h ./8hz-mp3-mine/fft.h
+--- ./8hz-mp3/fft.h	Tue May 12 11:48:25 1998
++++ ./8hz-mp3-mine/fft.h	Mon Nov 30 22:16:22 1998
+@@ -5,7 +5,2 @@
+ 
+-void fft(float x_real[BLKSIZE],
+-         float x_imag[BLKSIZE],
+-         float energy[BLKSIZE],
+-         float phi[BLKSIZE],
+-         int N);
+ 
+diff -bBru -1 ./8hz-mp3/formatBitstream.c ./8hz-mp3-mine/formatBitstream.c
+--- ./8hz-mp3/formatBitstream.c	Tue May 12 11:48:25 1998
++++ ./8hz-mp3-mine/formatBitstream.c	Tue Aug 17 02:02:00 1999
+@@ -14,3 +14,2 @@
+ 
+-#include "formatBitstream.h"
+ #include <stdlib.h>
+@@ -19,2 +18,3 @@
+ 
++#include "MP3Encoder.h"
+ #ifndef EXIT_FAILURE
+@@ -24,15 +24,4 @@
+ /* globals */
+-static int BitCount       = 0;
+-static int ThisFrameSize  = 0;
+-static int BitsRemaining  = 0;
+-static BitsFcnPtr PutBits = NULL;
+-
+-/* forward declarations */
+-static int store_side_info( BF_FrameData *frameInfo );
+-static int main_data( BF_FrameData *frameInfo, BF_FrameResults *results );
+-static int side_queue_elements( int *forwardFrameLength, int *forwardSILength );
+-static void free_side_queues();
+-static void WriteMainDataBits( unsigned val,
+-                               unsigned nbits,
+-			       BF_FrameResults *results );
++
++void WriteMainDataBits( unsigned , unsigned, BF_FrameResults *);
+ /*
+@@ -52,3 +41,3 @@
+ void
+-BF_BitstreamFrame( BF_FrameData *frameInfo, BF_FrameResults *results )
++EncoderInterface::BF_BitstreamFrame( BF_FrameData *frameInfo, BF_FrameResults *results )
+ {
+@@ -87,3 +78,3 @@
+ void
+-BF_FlushBitstream( BF_FrameData *frameInfo, BF_FrameResults *results )
++EncoderInterface::BF_FlushBitstream( BF_FrameData *frameInfo, BF_FrameResults *results )
+ {
+@@ -122,6 +113,6 @@
+ int
+-BF_PartLength( BF_BitstreamPart *part )
++EncoderInterface::BF_PartLength( BF_BitstreamPart *part )
+ {
+     BF_BitstreamElement *ep = part->element;
+-    int i, bits;
++    uint32 i, bits;
+ 
+@@ -138,24 +129,12 @@
+ 
+-typedef struct
+-{
+-    int frameLength;
+-    int SILength;
+-    int nGranules;
+-    int nChannels;
+-    BF_PartHolder *headerPH;
+-    BF_PartHolder *frameSIPH;
+-    BF_PartHolder *channelSIPH[MAX_CHANNELS];
+-    BF_PartHolder *spectrumSIPH[MAX_GRANULES][MAX_CHANNELS];
+-} MYSideInfo;
+-
+-static MYSideInfo *get_side_info();
+-static int write_side_info();
+-typedef int (*PartWriteFcnPtr)( BF_BitstreamPart *part, BF_FrameResults *results );
+ 
++//static MYSideInfo *EncoderInterface::get_side_info();
++//static int EncoderInterface::write_side_info();
++typedef int (EncoderInterface::*PartWriteFcnPtr )( BF_BitstreamPart *part, BF_FrameResults *results ) ;
+ 
+-static int
+-writePartMainData( BF_BitstreamPart *part, BF_FrameResults *results )
++int
++EncoderInterface::writePartMainData( BF_BitstreamPart *part, BF_FrameResults *results )
+ {
+     BF_BitstreamElement *ep;
+-    int i, bits;
++    uint32 i, bits;
+ 
+@@ -174,7 +153,9 @@
+ 
+-static int
+-writePartSideInfo( BF_BitstreamPart *part, BF_FrameResults *results )
++int writePartSideInfo( BF_BitstreamPart *, BF_FrameResults *);
++
++int
++EncoderInterface::writePartSideInfo( BF_BitstreamPart *part, BF_FrameResults *)
+ {
+     BF_BitstreamElement *ep;
+-    int i, bits;
++    uint32 i, bits;
+ 
+@@ -186,3 +167,3 @@
+     {
+-	(*PutBits)( ep->value, ep->length );
++	(this->*PutBits)( ep->value, ep->length );
+ 	bits += ep->length;
+@@ -192,7 +173,7 @@
+ 
+-static int
+-main_data( BF_FrameData *fi, BF_FrameResults *results )
++int
++EncoderInterface::main_data( BF_FrameData *fi, BF_FrameResults *results )
+ {
+     int gr, ch, bits;
+-    PartWriteFcnPtr wp = writePartMainData;
++//    PartWriteFcnPtr wp = writePartMainData;
+     bits = 0;
+@@ -203,7 +184,12 @@
+ 	{
+-	    bits += (*wp)( fi->scaleFactors[gr][ch], results );
+-	    bits += (*wp)( fi->codedData[gr][ch],    results );
+-	    bits += (*wp)( fi->userSpectrum[gr][ch], results );
++//	    bits += (*wp)( fi->scaleFactors[gr][ch], results );
++//	    bits += (*wp)( fi->codedData[gr][ch],    results );
++//	    bits += (*wp)( fi->userSpectrum[gr][ch], results );
++	    bits += writePartMainData( fi->scaleFactors[gr][ch], results );
++	    bits += writePartMainData( fi->codedData[gr][ch],    results );
++	    bits += writePartMainData( fi->userSpectrum[gr][ch], results );
+ 	}
+-    bits += (*wp)( fi->userFrameData, results );
++//    bits += (*wp)( fi->userFrameData, results );
++    bits += writePartMainData( fi->userFrameData, results );
++
+     return bits;
+@@ -217,6 +203,6 @@
+ 
+-static void
+-WriteMainDataBits( unsigned val,
++void
++EncoderInterface::WriteMainDataBits( unsigned val,
+ 		   unsigned nbits,
+-		   BF_FrameResults *results )
++		   BF_FrameResults *)
+ {
+@@ -234,9 +220,9 @@
+ 	nbits -= BitsRemaining;
+-	(*PutBits)( extra, BitsRemaining );
++	(this->*PutBits)( extra, BitsRemaining );
+ 	BitCount = write_side_info();
+ 	BitsRemaining = ThisFrameSize - BitCount;
+-	(*PutBits)( val, nbits );
++	(this->*PutBits)( val, nbits );
+     }
+     else
+-	(*PutBits)( val, nbits );
++	(this->*PutBits)( val, nbits );
+     BitCount += nbits;
+@@ -249,4 +235,4 @@
+ 
+-static int
+-write_side_info()
++int
++EncoderInterface::write_side_info()
+ {
+@@ -254,3 +240,3 @@
+     int bits, ch, gr;
+-    PartWriteFcnPtr wp = writePartSideInfo;
++//    PartWriteFcnPtr wp = writePartSideInfo;
+ 
+@@ -259,7 +245,10 @@
+     ThisFrameSize = si->frameLength;
+-    bits += (*wp)( si->headerPH->part,  NULL );
+-    bits += (*wp)( si->frameSIPH->part, NULL );
++//    bits += (*wp)( si->headerPH->part,  NULL );
++//    bits += (*wp)( si->frameSIPH->part, NULL );
++    bits += writePartSideInfo( si->headerPH->part,  NULL );
++    bits += writePartSideInfo( si->frameSIPH->part, NULL );
+ 
+     for ( ch = 0; ch < si->nChannels; ch++ )
+-	bits += (*wp)( si->channelSIPH[ch]->part, NULL );
++//	bits += (*wp)( si->channelSIPH[ch]->part, NULL );
++	bits += writePartSideInfo( si->channelSIPH[ch]->part, NULL );
+ 
+@@ -267,3 +256,4 @@
+ 	for ( ch = 0; ch < si->nChannels; ch++ )
+-	    bits += (*wp)( si->spectrumSIPH[gr][ch]->part, NULL );
++//	    bits += (*wp)( si->spectrumSIPH[gr][ch]->part, NULL );
++	    bits += writePartSideInfo( si->spectrumSIPH[gr][ch]->part, NULL );
+     return bits;
+@@ -277,9 +267,6 @@
+ 
+-static struct side_info_link *side_queue_head   = NULL;
+-static struct side_info_link *side_queue_free   = NULL;
+ 
+-static void free_side_info_link( side_info_link *l );
+ 
+-static int
+-side_queue_elements( int *frameLength, int *SILength )
++int
++EncoderInterface::side_queue_elements( int *frameLength, int *SILength )
+ {
+@@ -300,4 +287,4 @@
+ 
+-static int
+-store_side_info( BF_FrameData *info )
++int
++EncoderInterface::store_side_info( BF_FrameData *info )
+ {
+@@ -312,3 +300,2 @@
+ #ifdef DEBUG
+-	static int n_si = 0;
+ 	n_si += 1;
+@@ -378,4 +372,4 @@
+ 
+-static MYSideInfo*
+-get_side_info()
++MYSideInfo*
++EncoderInterface::get_side_info()
+ {
+@@ -405,4 +399,4 @@
+ 
+-static void
+-free_side_queues()
++void
++EncoderInterface::free_side_queues()
+ {
+@@ -425,4 +419,4 @@
+ 
+-static void
+-free_side_info_link( side_info_link *l )
++void
++EncoderInterface::free_side_info_link( side_info_link *l )
+ {
+@@ -445,10 +439,10 @@
+ */
+-BF_PartHolder *BF_newPartHolder( int max_elements )
++BF_PartHolder *EncoderInterface::BF_newPartHolder( int max_elements )
+ {
+-    BF_PartHolder *newPH    = calloc( 1, sizeof(BF_PartHolder) );
++    BF_PartHolder *newPH    = (BF_PartHolder *)calloc( 1, sizeof(BF_PartHolder) );
+     assert( newPH );
+     newPH->max_elements  = max_elements;
+-    newPH->part          = calloc( 1, sizeof(BF_BitstreamPart) );
++    newPH->part          = (BF_BitstreamPart *)calloc( 1, sizeof(BF_BitstreamPart) );
+     assert( newPH->part );
+-    newPH->part->element = calloc( max_elements, sizeof(BF_BitstreamElement) );
++    newPH->part->element = (BF_BitstreamElement *)calloc( max_elements, sizeof(BF_BitstreamElement) );
+     assert( newPH->part->element );
+@@ -458,3 +452,3 @@
+ 
+-BF_PartHolder *BF_NewHolderFromBitstreamPart( BF_BitstreamPart *thePart )
++BF_PartHolder *EncoderInterface::BF_NewHolderFromBitstreamPart( BF_BitstreamPart *thePart )
+ {
+@@ -464,6 +458,6 @@
+ 
+-BF_PartHolder *BF_LoadHolderFromBitstreamPart( BF_PartHolder *theHolder, BF_BitstreamPart *thePart )
++BF_PartHolder *EncoderInterface::BF_LoadHolderFromBitstreamPart( BF_PartHolder *theHolder, BF_BitstreamPart *thePart )
+ {
+     BF_BitstreamElement *pElem;
+-    int i;
++    uint32 i;
+ 
+@@ -483,3 +477,3 @@
+ */
+-BF_PartHolder *BF_resizePartHolder( BF_PartHolder *oldPH, int max_elements )
++BF_PartHolder *EncoderInterface::BF_resizePartHolder( BF_PartHolder *oldPH, int max_elements )
+ {
+@@ -507,3 +501,3 @@
+ 
+-BF_PartHolder *BF_freePartHolder( BF_PartHolder *thePH )
++BF_PartHolder *EncoderInterface::BF_freePartHolder( BF_PartHolder *thePH )
+ {
+@@ -520,3 +514,3 @@
+ */
+-BF_PartHolder *BF_addElement( BF_PartHolder *thePH, BF_BitstreamElement *theElement )
++BF_PartHolder *EncoderInterface::BF_addElement( BF_PartHolder *thePH, BF_BitstreamElement *theElement )
+ {
+@@ -538,3 +532,3 @@
+ */
+-BF_PartHolder *BF_addEntry( BF_PartHolder *thePH, uint32 value, uint16 length )
++BF_PartHolder *EncoderInterface::BF_addEntry( BF_PartHolder *thePH, uint32 value, uint16 length )
+ {
+Only in ./8hz-mp3: formatBitstream.h
+Only in ./8hz-mp3: hg.mp3
+diff -bBru -1 ./8hz-mp3/huffman.c ./8hz-mp3-mine/huffman.c
+--- ./8hz-mp3/huffman.c	Sun May 31 05:41:30 1998
++++ ./8hz-mp3-mine/huffman.c	Tue Dec  1 21:13:50 1998
+@@ -3,24 +3,18 @@
+ 
++#include "MP3Encoder.h"
+ 
+-#include "types.h"
+-#include "layer3.h"
+-#include "l3bitstream.h"
+-#include "huffman.h"
+-#include "bitstream.h"
+-     
+-HUFFBITS dmask = 1 << (sizeof(HUFFBITS)*8-1);
+-unsigned int hs = sizeof(HUFFBITS)*8;
+-
+-static HUFFBITS      t1HB[]   = {1, 1, 1, 0}; 
+-static HUFFBITS      t2HB[]   = {1, 2, 1, 3, 1, 1, 3, 2, 0};
+-static HUFFBITS      t3HB[]   = {3, 2, 1, 1, 1, 1, 3, 2, 0};
+-static HUFFBITS      t5HB[]   = {1, 2, 6, 5, 3, 1, 4, 4, 7, 5, 7, 1, 6, 1, 1, 0};
+-static HUFFBITS      t6HB[]   = {7, 3, 5, 1, 6, 2, 3, 2, 5, 4, 4, 1, 3, 3, 2, 0};
+-static HUFFBITS      t7HB[]   = {1, 2, 10, 19, 16, 10, 3, 3, 7, 10, 5, 3, 11, 4, 13, 17, 8, 4, 12, 11, 18, 15, 11, 2, 7, 6, 9, 14, 3, 1, 6, 4, 5, 3, 2, 0};
+-static HUFFBITS      t8HB[]   = {3, 4, 6, 18, 12, 5, 5, 1, 2, 16, 9, 3, 7, 3, 5, 14, 7, 3, 19, 17, 15, 13, 10, 4, 13, 5, 8, 11, 5, 1, 12, 4, 4, 1, 1, 0};
+-static HUFFBITS      t9HB[]   = {7, 5, 9, 14, 15, 7, 6, 4, 5, 5, 6, 7, 7, 6, 8, 8, 8, 5, 15, 6, 9, 10, 5, 1, 11, 7, 9, 6, 4, 1, 14, 4, 6, 2, 6, 0};
+-static HUFFBITS      t10HB[]   = {1, 2, 10, 23, 35, 30, 12, 17, 3, 3, 8, 12, 18, 21, 12, 7, 11, 9, 15, 21, 32, 40, 19, 6, 14, 13, 22, 34, 46, 23, 18, 7, 20, 19, 33, 47, 27, 22, 9, 3, 31, 22, 41, 26, 21, 20, 5, 3, 14, 13, 10, 11, 16, 6, 5, 1, 9, 8, 7, 8, 4 , 4, 2, 0};
+-static HUFFBITS      t11HB[]   = {3, 4, 10, 24, 34, 33, 21, 15, 5, 3, 4, 10, 32, 17, 11, 10, 11, 7, 13, 18, 30, 31, 20, 5, 25, 11, 19, 59, 27, 18, 12, 5, 35, 33, 31, 58, 30, 16, 7, 5, 28, 26, 32, 19, 17, 15, 8, 14, 14, 12, 9, 13, 14, 9, 4, 1, 11, 4, 6, 6, 6, 3, 2, 0};
+-static HUFFBITS      t12HB[]   = {9, 6, 16, 33, 41, 39, 38, 26, 7, 5, 6, 9, 23, 16, 26, 11, 17, 7, 11, 14, 21, 30, 10, 7, 17, 10, 15, 12, 18, 28, 14, 5, 32, 13, 22, 19, 18, 16, 9, 5, 40, 17, 31, 29, 17, 13, 4, 2, 27, 12, 11, 15, 10, 7, 4, 1, 27, 12, 8, 12 , 6, 3, 1, 0}; 
+-static HUFFBITS      t13HB[]   = {1, 5, 14, 21, 34, 51, 46, 71, 42, 52, 68, 52, 67, 44, 43, 19, 3, 4, 12, 19, 31, 26, 44, 33, 31, 24, 32, 24, 31, 35, 22, 14, 15, 13, 23, 36, 59, 49, 77, 65, 29, 40, 30, 40, 27, 33, 42, 16, 22,
++     
++
++const HUFFBITS      EncoderInterface::t1HB[]   = {1, 1, 1, 0}; 
++const HUFFBITS      EncoderInterface::t2HB[]   = {1, 2, 1, 3, 1, 1, 3, 2, 0};
++const HUFFBITS      EncoderInterface::t3HB[]   = {3, 2, 1, 1, 1, 1, 3, 2, 0};
++const HUFFBITS      EncoderInterface::t5HB[]   = {1, 2, 6, 5, 3, 1, 4, 4, 7, 5, 7, 1, 6, 1, 1, 0};
++const HUFFBITS      EncoderInterface::t6HB[]   = {7, 3, 5, 1, 6, 2, 3, 2, 5, 4, 4, 1, 3, 3, 2, 0};
++const HUFFBITS      EncoderInterface::t7HB[]   = {1, 2, 10, 19, 16, 10, 3, 3, 7, 10, 5, 3, 11, 4, 13, 17, 8, 4, 12, 11, 18, 15, 11, 2, 7, 6, 9, 14, 3, 1, 6, 4, 5, 3, 2, 0};
++const HUFFBITS      EncoderInterface::t8HB[]   = {3, 4, 6, 18, 12, 5, 5, 1, 2, 16, 9, 3, 7, 3, 5, 14, 7, 3, 19, 17, 15, 13, 10, 4, 13, 5, 8, 11, 5, 1, 12, 4, 4, 1, 1, 0};
++const HUFFBITS      EncoderInterface::t9HB[]   = {7, 5, 9, 14, 15, 7, 6, 4, 5, 5, 6, 7, 7, 6, 8, 8, 8, 5, 15, 6, 9, 10, 5, 1, 11, 7, 9, 6, 4, 1, 14, 4, 6, 2, 6, 0};
++const HUFFBITS      EncoderInterface::t10HB[]   = {1, 2, 10, 23, 35, 30, 12, 17, 3, 3, 8, 12, 18, 21, 12, 7, 11, 9, 15, 21, 32, 40, 19, 6, 14, 13, 22, 34, 46, 23, 18, 7, 20, 19, 33, 47, 27, 22, 9, 3, 31, 22, 41, 26, 21, 20, 5, 3, 14, 13, 10, 11, 16, 6, 5, 1, 9, 8, 7, 8, 4 , 4, 2, 0};
++const HUFFBITS      EncoderInterface::t11HB[]   = {3, 4, 10, 24, 34, 33, 21, 15, 5, 3, 4, 10, 32, 17, 11, 10, 11, 7, 13, 18, 30, 31, 20, 5, 25, 11, 19, 59, 27, 18, 12, 5, 35, 33, 31, 58, 30, 16, 7, 5, 28, 26, 32, 19, 17, 15, 8, 14, 14, 12, 9, 13, 14, 9, 4, 1, 11, 4, 6, 6, 6, 3, 2, 0};
++const HUFFBITS      EncoderInterface::t12HB[]   = {9, 6, 16, 33, 41, 39, 38, 26, 7, 5, 6, 9, 23, 16, 26, 11, 17, 7, 11, 14, 21, 30, 10, 7, 17, 10, 15, 12, 18, 28, 14, 5, 32, 13, 22, 19, 18, 16, 9, 5, 40, 17, 31, 29, 17, 13, 4, 2, 27, 12, 11, 15, 10, 7, 4, 1, 27, 12, 8, 12 , 6, 3, 1, 0}; 
++const HUFFBITS      EncoderInterface::t13HB[]   = {1, 5, 14, 21, 34, 51, 46, 71, 42, 52, 68, 52, 67, 44, 43, 19, 3, 4, 12, 19, 31, 26, 44, 33, 31, 24, 32, 24, 31, 35, 22, 14, 15, 13, 23, 36, 59, 49, 77, 65, 29, 40, 30, 40, 27, 33, 42, 16, 22,
+                                  20, 37, 61, 56, 79, 73, 64, 43, 76, 56, 37, 26, 31, 25, 14, 35, 16, 60, 57, 97, 75, 114, 91, 54, 73, 55, 41, 48, 53, 23, 24, 58, 27, 50, 96, 76, 70, 93, 84, 77, 58, 79, 29, 74, 49, 41, 17, 47, 
+@@ -30,3 +24,3 @@
+                                  20, 29, 11, 17, 12, 16, 8, 1, 1, 0, 1};
+-static HUFFBITS      t15HB[]   = {7, 12, 18, 53, 47, 76, 124, 108, 89, 123, 108, 119, 107, 81, 122, 63, 13, 5, 16, 27, 46, 36, 61, 51, 42, 70, 52, 83, 65, 41, 59, 36, 19, 17, 15, 24, 41, 34, 59, 48, 40, 64, 50, 78, 62, 80, 56, 
++const HUFFBITS      EncoderInterface::t15HB[]   = {7, 12, 18, 53, 47, 76, 124, 108, 89, 123, 108, 119, 107, 81, 122, 63, 13, 5, 16, 27, 46, 36, 61, 51, 42, 70, 52, 83, 65, 41, 59, 36, 19, 17, 15, 24, 41, 34, 59, 48, 40, 64, 50, 78, 62, 80, 56, 
+                                   33, 29, 28, 25, 43, 39, 63, 55, 93, 76, 59, 93, 72, 54, 75, 50, 29, 52, 22, 42, 40, 67, 57, 95, 79, 72, 57, 89, 69, 49, 66, 46, 27, 77, 37, 35, 66, 58, 52, 91, 74, 62, 48, 79, 63, 90, 62, 40, 38,
+@@ -36,3 +30,3 @@
+                                   37, 34, 30, 28, 20, 17, 26, 21, 16, 10, 6, 8, 6, 2, 0};
+-static HUFFBITS      t16HB[]   = {1, 5, 14, 44, 74, 63, 110, 93, 172, 149, 138, 242, 225, 195, 376, 17, 3, 4, 12, 20, 35, 62, 53, 47, 83, 75, 68, 119, 201, 107, 207, 9, 15, 13, 23, 38, 67, 58, 103, 90, 161, 72, 127, 117, 
++const HUFFBITS      EncoderInterface::t16HB[]   = {1, 5, 14, 44, 74, 63, 110, 93, 172, 149, 138, 242, 225, 195, 376, 17, 3, 4, 12, 20, 35, 62, 53, 47, 83, 75, 68, 119, 201, 107, 207, 9, 15, 13, 23, 38, 67, 58, 103, 90, 161, 72, 127, 117, 
+                                   110, 209, 206, 16, 45, 21, 39, 69, 64, 114, 99, 87, 158, 140, 252, 212, 199, 387, 365, 26, 75, 36, 68, 65, 115, 101, 179, 164, 155, 264, 246, 226, 395, 382, 362, 9, 66, 30, 59, 56, 102,
+@@ -43,3 +37,3 @@
+                                   0, 12, 10, 7, 11, 10, 17, 11, 9, 13, 12, 10, 7, 5, 3, 1, 3};
+-static HUFFBITS      t24HB[]   = {15, 13, 46, 80, 146, 262, 248, 434, 426, 669, 653, 649, 621, 517, 1032, 88, 14, 12, 21, 38, 71, 130, 122, 216, 209, 198, 327, 345, 319, 297, 279, 42, 47, 22, 41, 74, 68, 128, 120, 221,
++const HUFFBITS      EncoderInterface::t24HB[]   = {15, 13, 46, 80, 146, 262, 248, 434, 426, 669, 653, 649, 621, 517, 1032, 88, 14, 12, 21, 38, 71, 130, 122, 216, 209, 198, 327, 345, 319, 297, 279, 42, 47, 22, 41, 74, 68, 128, 120, 221,
+                                   207, 194, 182, 340, 315, 295, 541, 18, 81, 39, 75, 70, 134, 125, 116, 220, 204, 190, 178, 325, 311, 293, 271, 16, 147, 72, 69, 135, 127, 118, 112, 210, 200, 188, 352, 323, 306, 285, 
+@@ -50,17 +44,17 @@
+                                   274, 267, 264, 259, 382, 378, 372, 367, 363, 360, 358, 356, 0, 43, 20, 19, 17, 15, 13, 11, 9, 7, 6, 4, 7, 5, 3, 1, 3};
+-static HUFFBITS      t32HB[]   = {1, 5, 4, 5, 6, 5, 4, 4, 7, 3, 6, 0, 7, 2, 3, 1};
+-static HUFFBITS      t33HB[]   = {15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0};
++const HUFFBITS      EncoderInterface::t32HB[]   = {1, 5, 4, 5, 6, 5, 4, 4, 7, 3, 6, 0, 7, 2, 3, 1};
++const HUFFBITS      EncoderInterface::t33HB[]   = {15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0};
+ 
+-static unsigned char t1l[]  = {1, 3, 2, 3}; 
+-static unsigned char t2l[]  = {1, 3, 6, 3, 3, 5, 5, 5, 6}; 
+-static unsigned char t3l[]  = {2, 2, 6, 3, 2, 5, 5, 5, 6}; 
+-static unsigned char t5l[]  = {1, 3, 6, 7, 3, 3, 6, 7, 6, 6, 7, 8, 7, 6, 7, 8}; 
+-static unsigned char t6l[]  = {3, 3, 5, 7, 3, 2, 4, 5, 4, 4, 5, 6, 6, 5, 6, 7}; 
+-static unsigned char t7l[]  = {1, 3, 6, 8, 8, 9, 3, 4, 6, 7, 7, 8, 6, 5, 7, 8, 8, 9, 7, 7, 8, 9, 9, 9, 7, 7, 8, 9, 9, 10, 8, 8, 9, 10, 10, 10}; 
+-static unsigned char t8l[]  = {2, 3, 6, 8, 8, 9, 3, 2, 4, 8, 8, 8, 6, 4, 6, 8, 8, 9, 8, 8, 8, 9, 9, 10, 8, 7, 8, 9, 10, 10, 9, 8, 9, 9, 11, 11}; 
+-static unsigned char t9l[]  = {3, 3, 5, 6, 8, 9, 3, 3, 4, 5, 6, 8, 4, 4, 5, 6, 7, 8, 6, 5, 6, 7, 7, 8, 7, 6, 7, 7, 8, 9, 8, 7, 8, 8, 9, 9}; 
+-static unsigned char t10l[]  = {1, 3, 6, 8, 9, 9, 9, 10, 3, 4, 6, 7, 8, 9, 8, 8, 6, 6, 7, 8, 9, 10, 9, 9, 7, 7, 8, 9, 10, 10, 9, 10, 8, 8, 9, 10, 10, 10, 10, 10, 9, 9, 10, 10, 11, 11, 10, 11, 8, 8, 9, 10, 10, 10, 11, 11, 9, 8, 9, 10, 10, 11, 11, 11}; 
+-static unsigned char t11l[]  = {2, 3, 5, 7, 8, 9, 8, 9, 3, 3, 4, 6, 8, 8, 7, 8, 5, 5, 6, 7, 8, 9, 8, 8, 7, 6, 7, 9, 8, 10, 8, 9, 8, 8, 8, 9, 9, 10, 9, 10, 8, 8, 9, 10, 10, 11, 10, 11, 8, 7, 7, 8, 9, 10, 10, 10, 8, 7, 8, 9, 10, 10, 10, 10}; 
+-static unsigned char t12l[]  = {4, 3, 5, 7, 8, 9, 9, 9, 3, 3, 4, 5, 7, 7, 8, 8, 5, 4, 5, 6, 7, 8, 7, 8, 6, 5, 6, 6, 7, 8, 8, 8, 7, 6, 7, 7, 8, 8, 8, 9, 8, 7, 8, 8, 8, 9, 8, 9, 8, 7, 7, 8, 8, 9, 9, 10, 9, 8, 8, 9, 9, 9, 9, 10}; 
+-static unsigned char t13l[]  = {1, 4, 6, 7, 8, 9, 9, 10, 9, 10, 11, 11, 12, 12, 13, 13, 3, 4, 6, 7, 8, 8, 9, 9, 9, 9, 10, 10, 11, 12, 12, 12, 6, 6, 7, 8, 9, 9, 10, 10, 9, 10, 10, 11, 11, 12, 13, 13, 7, 7, 8, 9, 9, 10, 10, 10, 10, 11, 11, 11, 11, 12, 13, 13, 
++const unsigned char EncoderInterface::t1l[]  = {1, 3, 2, 3}; 
++const unsigned char EncoderInterface::t2l[]  = {1, 3, 6, 3, 3, 5, 5, 5, 6}; 
++const unsigned char EncoderInterface::t3l[]  = {2, 2, 6, 3, 2, 5, 5, 5, 6}; 
++const unsigned char EncoderInterface::t5l[]  = {1, 3, 6, 7, 3, 3, 6, 7, 6, 6, 7, 8, 7, 6, 7, 8}; 
++const unsigned char EncoderInterface::t6l[]  = {3, 3, 5, 7, 3, 2, 4, 5, 4, 4, 5, 6, 6, 5, 6, 7}; 
++const unsigned char EncoderInterface::t7l[]  = {1, 3, 6, 8, 8, 9, 3, 4, 6, 7, 7, 8, 6, 5, 7, 8, 8, 9, 7, 7, 8, 9, 9, 9, 7, 7, 8, 9, 9, 10, 8, 8, 9, 10, 10, 10}; 
++const unsigned char EncoderInterface::t8l[]  = {2, 3, 6, 8, 8, 9, 3, 2, 4, 8, 8, 8, 6, 4, 6, 8, 8, 9, 8, 8, 8, 9, 9, 10, 8, 7, 8, 9, 10, 10, 9, 8, 9, 9, 11, 11}; 
++const unsigned char EncoderInterface::t9l[]  = {3, 3, 5, 6, 8, 9, 3, 3, 4, 5, 6, 8, 4, 4, 5, 6, 7, 8, 6, 5, 6, 7, 7, 8, 7, 6, 7, 7, 8, 9, 8, 7, 8, 8, 9, 9}; 
++const unsigned char EncoderInterface::t10l[]  = {1, 3, 6, 8, 9, 9, 9, 10, 3, 4, 6, 7, 8, 9, 8, 8, 6, 6, 7, 8, 9, 10, 9, 9, 7, 7, 8, 9, 10, 10, 9, 10, 8, 8, 9, 10, 10, 10, 10, 10, 9, 9, 10, 10, 11, 11, 10, 11, 8, 8, 9, 10, 10, 10, 11, 11, 9, 8, 9, 10, 10, 11, 11, 11}; 
++const unsigned char EncoderInterface::t11l[]  = {2, 3, 5, 7, 8, 9, 8, 9, 3, 3, 4, 6, 8, 8, 7, 8, 5, 5, 6, 7, 8, 9, 8, 8, 7, 6, 7, 9, 8, 10, 8, 9, 8, 8, 8, 9, 9, 10, 9, 10, 8, 8, 9, 10, 10, 11, 10, 11, 8, 7, 7, 8, 9, 10, 10, 10, 8, 7, 8, 9, 10, 10, 10, 10}; 
++const unsigned char EncoderInterface::t12l[]  = {4, 3, 5, 7, 8, 9, 9, 9, 3, 3, 4, 5, 7, 7, 8, 8, 5, 4, 5, 6, 7, 8, 7, 8, 6, 5, 6, 6, 7, 8, 8, 8, 7, 6, 7, 7, 8, 8, 8, 9, 8, 7, 8, 8, 8, 9, 8, 9, 8, 7, 7, 8, 8, 9, 9, 10, 9, 8, 8, 9, 9, 9, 9, 10}; 
++const unsigned char EncoderInterface::t13l[]  = {1, 4, 6, 7, 8, 9, 9, 10, 9, 10, 11, 11, 12, 12, 13, 13, 3, 4, 6, 7, 8, 8, 9, 9, 9, 9, 10, 10, 11, 12, 12, 12, 6, 6, 7, 8, 9, 9, 10, 10, 9, 10, 10, 11, 11, 12, 13, 13, 7, 7, 8, 9, 9, 10, 10, 10, 10, 11, 11, 11, 11, 12, 13, 13, 
+ 8, 7, 9, 9, 10, 10, 11, 11, 10, 11, 11, 12, 12, 13, 13, 14, 9, 8, 9, 10, 10, 10, 11, 11, 11, 11, 12, 11, 13, 13, 14, 14, 9, 9, 10, 10, 11, 11, 11, 11, 11, 12, 12, 12, 13, 13, 14, 14, 10, 9, 10, 11, 11, 11, 12, 12, 12, 12, 13, 13, 13, 14, 16, 16, 9, 8, 9, 10,
+@@ -68,3 +62,3 @@
+ 13, 12, 13, 14, 14, 15, 15, 15, 16, 16, 16, 12, 11, 12, 13, 13, 13, 14, 14, 14, 14, 14, 15, 16, 15, 16, 16, 13, 12, 12, 13, 13, 13, 15, 14, 14, 17, 15, 15, 15, 17, 16, 16, 12, 12, 13, 14, 14, 14, 15, 14, 15, 15, 16, 16, 19, 18, 19, 16}; 
+-static unsigned char t15l[]  = {3, 4, 5, 7, 7, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12, 13, 4, 3, 5, 6, 7, 7, 8, 8, 8, 9, 9, 10, 10, 10, 11, 11, 5, 5, 5, 6, 7, 7, 8, 8, 8, 9, 9, 10, 10, 11, 11, 11, 6, 6, 6, 7, 7, 8, 8, 9, 9, 9, 10, 10, 10, 11, 11, 11, 7, 6, 7,
++const unsigned char EncoderInterface::t15l[]  = {3, 4, 5, 7, 7, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12, 13, 4, 3, 5, 6, 7, 7, 8, 8, 8, 9, 9, 10, 10, 10, 11, 11, 5, 5, 5, 6, 7, 7, 8, 8, 8, 9, 9, 10, 10, 11, 11, 11, 6, 6, 6, 7, 7, 8, 8, 9, 9, 9, 10, 10, 10, 11, 11, 11, 7, 6, 7,
+  7, 8, 8, 9, 9, 9, 9, 10, 10, 10, 11, 11, 11, 8, 7, 7, 8, 8, 8, 9, 9, 9, 9, 10, 10, 11, 11, 11, 12, 9, 7, 8, 8, 8, 9, 9, 9, 9, 10, 10, 10, 11, 11, 12, 12, 9, 8, 8, 9, 9, 9, 9, 10, 10, 10, 10, 10, 11, 11, 11, 12, 9, 8, 8, 9, 9, 9, 9, 10, 10, 10, 10, 11, 11,
+@@ -72,3 +66,3 @@
+ 11, 10, 10, 10, 10, 11, 11, 11, 11, 12, 12, 12, 12, 12, 13, 13, 12, 11, 11, 11, 11, 11, 11, 11, 12, 12, 12, 12, 13, 13, 12, 13, 12, 11, 11, 11, 11, 11, 11, 12, 12, 12, 12, 12, 13, 13, 13, 13}; 
+-static unsigned char t16l[]  = {1, 4, 6, 8, 9, 9, 10, 10, 11, 11, 11, 12, 12, 12, 13, 9, 3, 4, 6, 7, 8, 9, 9, 9, 10, 10, 10, 11, 12, 11, 12, 8, 6, 6, 7, 8, 9, 9, 10, 10, 11, 10, 11, 11, 11, 12, 12, 9, 8, 7, 8, 9, 9, 10, 10, 10, 11, 11, 12, 12, 12, 13, 13,
++const unsigned char EncoderInterface::t16l[]  = {1, 4, 6, 8, 9, 9, 10, 10, 11, 11, 11, 12, 12, 12, 13, 9, 3, 4, 6, 7, 8, 9, 9, 9, 10, 10, 10, 11, 12, 11, 12, 8, 6, 6, 7, 8, 9, 9, 10, 10, 11, 10, 11, 11, 11, 12, 12, 9, 8, 7, 8, 9, 9, 10, 10, 10, 11, 11, 12, 12, 12, 13, 13,
+  10, 9, 8, 9, 9, 10, 10, 11, 11, 11, 12, 12, 12, 13, 13, 13, 9, 9, 8, 9, 9, 10, 11, 11, 12, 11, 12, 12, 13, 13, 13, 14, 10, 10, 9, 9, 10, 11, 11, 11, 11, 12, 12, 12, 12, 13, 13, 14, 10, 10, 9, 10, 10, 11, 11, 11, 12, 12, 13, 13, 13, 13, 15, 15, 10, 10, 10,
+@@ -76,3 +70,3 @@
+  12, 12, 12, 13, 13, 13, 13, 15, 14, 14, 14, 14, 16, 11, 14, 12, 12, 12, 13, 13, 14, 14, 14, 16, 15, 15, 15, 17, 15, 11, 13, 13, 11, 12, 14, 14, 13, 14, 14, 15, 16, 15, 17, 15, 14, 11, 9, 8, 8, 9, 9, 10, 10, 10, 11, 11, 11, 11, 11, 11, 11, 8}; 
+-static unsigned char t24l[]  = {4, 4, 6, 7, 8, 9, 9, 10, 10, 11, 11, 11, 11, 11, 12, 9, 4, 4, 5, 6, 7, 8, 8, 9, 9, 9, 10, 10, 10, 10, 10, 8, 6, 5, 6, 7, 7, 8, 8, 9, 9, 9, 9, 10, 10, 10, 11, 7, 7, 6, 7, 7, 8, 8, 8, 9, 9, 9, 9, 10, 10, 10, 10, 7, 8, 7, 7, 8,
++const unsigned char EncoderInterface::t24l[]  = {4, 4, 6, 7, 8, 9, 9, 10, 10, 11, 11, 11, 11, 11, 12, 9, 4, 4, 5, 6, 7, 8, 8, 9, 9, 9, 10, 10, 10, 10, 10, 8, 6, 5, 6, 7, 7, 8, 8, 9, 9, 9, 9, 10, 10, 10, 11, 7, 7, 6, 7, 7, 8, 8, 8, 9, 9, 9, 9, 10, 10, 10, 10, 7, 8, 7, 7, 8,
+  8, 8, 8, 9, 9, 9, 10, 10, 10, 10, 11, 7, 9, 7, 8, 8, 8, 8, 9, 9, 9, 9, 10, 10, 10, 10, 10, 7, 9, 8, 8, 8, 8, 9, 9, 9, 9, 10, 10, 10, 10, 10, 11, 7, 10, 8, 8, 8, 9, 9, 9, 9, 10, 10, 10, 10, 10, 11, 11, 8, 10, 9, 9, 9, 9, 9, 9, 9, 9, 10, 10, 10, 10, 11, 11, 
+@@ -80,7 +74,7 @@
+  10, 10, 10, 10, 10, 11, 11, 11, 11, 11, 11, 11, 8, 12, 10, 10, 10, 10, 10, 10, 11, 11, 11, 11, 11, 11, 11, 11, 8, 8, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 4}; 
+-static unsigned char t32l[]  = {1, 4, 4, 5, 4, 6, 5, 6, 4, 5, 5, 6, 5, 6, 6, 6}; 
+-static unsigned char t33l[]  = {4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4}; 
++const unsigned char EncoderInterface::t32l[]  = {1, 4, 4, 5, 4, 6, 5, 6, 4, 5, 5, 6, 5, 6, 6, 6}; 
++const unsigned char EncoderInterface::t33l[]  = {4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4}; 
+ 
+ #define NOREF -1
+-struct huffcodetab ht[HTN] =
++const struct huffcodetab EncoderInterface::ht[HTN] =
+ {
+@@ -125,3 +119,3 @@
+ /* return value: 0-no error, 1 decode error				*/
+-void huffman_coder(unsigned int x,
++void EncoderInterface::huffman_coder(unsigned int x,
+                    unsigned int y,
+diff -bBru -1 ./8hz-mp3/huffman.h ./8hz-mp3-mine/huffman.h
+--- ./8hz-mp3/huffman.h	Sun May 31 05:23:17 1998
++++ ./8hz-mp3-mine/huffman.h	Tue Dec  1 21:01:18 1998
+@@ -2,21 +2,2 @@
+ 
+-#define HUFFBITS unsigned long int
+-#define HTN	34
+-#define MXOFF	250
+  
+-struct huffcodetab {
+-  unsigned int xlen; 	/*max. x-index+			      	*/ 
+-  unsigned int ylen;	/*max. y-index+				*/
+-  unsigned int linbits; /*number of linbits			*/
+-  unsigned int linmax;	/*max number to be stored in linbits	*/
+-  HUFFBITS *table;	/*pointer to array[xlen][ylen]		*/
+-  unsigned char *hlen;	/*pointer to array[xlen][ylen]		*/
+-};
+-
+-extern struct huffcodetab ht[HTN];/* global memory block		*/
+-				/* array of all huffcodtable headers	*/
+-				/* 0..31 Huffman code table 0..31	*/
+-				/* 32,33 count1-tables			*/
+-
+-extern void huffman_coder(unsigned int, unsigned int,
+-                          struct huffcodetab*, bitstream_t*);
+diff -bBru -1 ./8hz-mp3/ieeefloat.c ./8hz-mp3-mine/ieeefloat.c
+--- ./8hz-mp3/ieeefloat.c	Tue May 12 11:48:25 1998
++++ ./8hz-mp3-mine/ieeefloat.c	Tue Dec  1 21:25:03 1998
+@@ -50,6 +50,3 @@
+  */
+-
+-#include	<stdio.h>
+-#include	<math.h>
+-#include	"ieeefloat.h"
++#include "MP3Encoder.h"
+ 
+@@ -79,4 +76,3 @@
+ defdouble
+-ConvertFromIeeeSingle(bytes)
+-char* bytes;
++EncoderInterface::ConvertFromIeeeSingle(char* bytes)
+ {
+@@ -123,5 +119,3 @@
+ void
+-ConvertToIeeeSingle(num, bytes)
+-defdouble num;
+-char* bytes;
++EncoderInterface::ConvertToIeeeSingle(defdouble num, char* bytes)
+ {
+@@ -192,4 +186,3 @@
+ defdouble
+-ConvertFromIeeeDouble(bytes)
+-char* bytes;
++EncoderInterface::ConvertFromIeeeDouble(char* bytes)
+ {
+@@ -242,5 +235,4 @@
+ void
+-ConvertToIeeeDouble(num, bytes)
+-defdouble num;
+-char *bytes;
++EncoderInterface::ConvertToIeeeDouble(defdouble num, char *bytes)
++
+ {
+@@ -323,4 +315,3 @@
+ defdouble
+-ConvertFromIeeeExtended(bytes)
+-char* bytes;
++EncoderInterface::ConvertFromIeeeExtended(char* bytes)
+ {
+@@ -372,5 +363,4 @@
+ void
+-ConvertToIeeeExtended(num, bytes)
+-defdouble num;
+-char *bytes;
++EncoderInterface::ConvertToIeeeExtended(defdouble num, char *bytes)
++
+ {
+diff -bBru -1 ./8hz-mp3/ieeefloat.h ./8hz-mp3-mine/ieeefloat.h
+--- ./8hz-mp3/ieeefloat.h	Tue May 12 11:48:25 1998
++++ ./8hz-mp3-mine/ieeefloat.h	Tue Dec  1 21:21:34 1998
+@@ -55,3 +55,3 @@
+ 
+-typedef float Single;
++
+ 
+@@ -60,3 +60,2 @@
+ #else /* !applec */
+- typedef long double defdouble;
+ #endif /* applec */
+@@ -64,3 +63,2 @@
+ #ifndef THINK_C
+- typedef double Double;
+ #else /* THINK_C */
+@@ -69,12 +67,5 @@
+ 
+-#define	kFloatLength	4
+-#define	kDoubleLength	8
+-#define	kExtendedLength	10
+-
+-extern defdouble ConvertFromIeeeSingle(char *bytes);
+-extern void ConvertToIeeeSingle(defdouble num, char *bytes);
+-extern defdouble ConvertFromIeeeDouble(char *bytes);
+-extern void ConvertToIeeeDouble(defdouble num, char *bytes);
+-extern defdouble ConvertFromIeeeExtended(char *bytes);
+-extern void ConvertToIeeeExtended(defdouble num, char *bytes);
++
++
++
+ #endif
+diff -bBru -1 ./8hz-mp3/l3bitstream.c ./8hz-mp3-mine/l3bitstream.c
+--- ./8hz-mp3/l3bitstream.c	Sun May 31 18:13:07 1998
++++ ./8hz-mp3-mine/l3bitstream.c	Tue Aug 17 02:01:27 1999
+@@ -1,40 +1,9 @@
+-#include <stdlib.h>
++#include "MP3Encoder.h"
+ 
+-#include "l3bitstream.h" /* the public interface */
+-#include "l3psy.h"
+-#include "l3mdct.h"
+-#include "l3loop.h"
+-#include "formatBitstream.h" 
+-#include "huffman.h"
+-#include "bitstream.h"
+-#include "types.h"
+-#include "tables.h"
+-#include "error.h"
+-/*static int stereo = 1;*/
+-static bitstream_t *bs = NULL;
+-
+-BF_FrameData    *frameData    = NULL;
+-BF_FrameResults *frameResults = NULL;
+-
+-int PartHoldersInitialized = 0;
+-
+-BF_PartHolder *headerPH;
+-BF_PartHolder *frameSIPH;
+-BF_PartHolder *channelSIPH[ MAX_CHANNELS ];
+-BF_PartHolder *spectrumSIPH[ MAX_GRANULES ][ MAX_CHANNELS ];
+-BF_PartHolder *scaleFactorsPH[ MAX_GRANULES ][ MAX_CHANNELS ];
+-BF_PartHolder *codedDataPH[ MAX_GRANULES ][ MAX_CHANNELS ];
+-BF_PartHolder *userSpectrumPH[ MAX_GRANULES ][ MAX_CHANNELS ];
+-BF_PartHolder *userFrameDataPH;
+-
+-static int encodeSideInfo( L3_side_info_t  *si );
+-static void encodeMainData(int l3_enc[2][2][576], L3_side_info_t  *si, L3_scalefac_t   *scalefac );
+-static void write_ancillary_data( char *theData, int lengthInBits );
+-static void drain_into_ancillary_data( int lengthInBits );
+-static void Huffmancodebits( BF_PartHolder **pph, int *ix, gr_info *gi );
+ 
+ 
+-void putMyBits( uint32 val, uint16 len )
++
++void EncoderInterface::putMyBits( uint32 val, uint16 len )
+ {
+-    putbits( bs, val, len );
++    putbits( l3_bitstream_bs, val, len );
+ }
+@@ -53,3 +22,3 @@
+ void
+-L3_format_bitstream( int              l3_enc[2][2][576],
++EncoderInterface::L3_format_bitstream( int              l3_enc[2][2][576],
+ 		      L3_side_info_t  *l3_side,
+@@ -62,3 +31,3 @@
+     int gr, ch, i;
+-    bs = in_bs;
++    l3_bitstream_bs = in_bs;
+     
+@@ -66,3 +35,3 @@
+     {
+-	frameData = calloc( 1, sizeof(*frameData) );
++	frameData = (BF_FrameData *)calloc( 1, sizeof(*frameData) );
+ 	if(!frameData) ERROR("ENOMEM !");
+@@ -71,3 +40,3 @@
+     {
+-	frameResults = calloc( 1, sizeof(*frameData) );
++	frameResults = (BF_FrameResults *)calloc( 1, sizeof(*frameData) );
+ 	if(!frameData) ERROR("ENOMEM !!");
+@@ -116,3 +85,3 @@
+     */
+-    frameData->putbits     = putMyBits;
++    frameData->putbits     = &EncoderInterface::putMyBits;
+     frameData->frameLength = config.mpeg.bits_per_frame;
+@@ -142,3 +112,3 @@
+ 
+-void L3_FlushBitstream()
++void EncoderInterface::L3_FlushBitstream()
+ {
+@@ -148,6 +118,6 @@
+ 
+-static unsigned slen1_tab[16] = { 0, 0, 0, 0, 3, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4 };
+-static unsigned slen2_tab[16] = { 0, 1, 2, 3, 0, 1, 2, 3, 1, 2, 3, 1, 2, 3, 2, 3 };
++ const unsigned EncoderInterface::slen1_tab[16] = { 0, 0, 0, 0, 3, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4 };
++ const unsigned EncoderInterface::slen2_tab[16] = { 0, 1, 2, 3, 0, 1, 2, 3, 1, 2, 3, 1, 2, 3, 2, 3 };
+ 
+-static void encodeMainData(int              l3_enc[2][2][576],
++ void EncoderInterface::encodeMainData(int              l3_enc[2][2][576],
+ 	                   L3_side_info_t  *si,
+@@ -282,5 +252,5 @@
+ 
+-static unsigned int crc = 0;
++ unsigned int EncoderInterface::crc = 0;
+ 
+-static int encodeSideInfo( L3_side_info_t  *si )
++ int EncoderInterface::encodeSideInfo( L3_side_info_t  *si )
+ {
+@@ -426,3 +396,3 @@
+ 
+-static void write_ancillary_data( char *theData, int lengthInBits )
++ void EncoderInterface::write_ancillary_data( char *theData, int lengthInBits )
+ {
+@@ -455,4 +425,4 @@
+ */
+-static void
+-drain_into_ancillary_data( int lengthInBits )
++ void
++EncoderInterface::drain_into_ancillary_data( int lengthInBits )
+ {
+@@ -479,6 +449,5 @@
+   */
+-static void
+-Huffmancodebits( BF_PartHolder **pph, int *ix, gr_info *gi )
++ void
++EncoderInterface::Huffmancodebits( BF_PartHolder **pph, int *ix, gr_info *gi )
+ {
+-    int L3_huffman_coder_count1( BF_PartHolder **pph, struct huffcodetab *h, int v, int w, int x, int y );
+     int bigv_bitcount( int ix[576], gr_info *cod_info );
+@@ -490,3 +459,3 @@
+     unsigned int code, ext;
+-    struct huffcodetab *h;
++    const struct huffcodetab *h;
+     int bvbits, c1bits, tablezeros, r0, r1, r2, rt, *pr;
+@@ -512,3 +481,3 @@
+ 	    int (*ix_s)[192][3]; 
+-	    int *scalefac = &sfBandIndex[config.mpeg.samplerate_index+(config.mpeg.type*3)].s[0];
++	    const int *scalefac = &sfBandIndex[config.mpeg.samplerate_index+(config.mpeg.type*3)].s[0];
+ 	    
+@@ -550,3 +519,3 @@
+ 		int (*ix_s)[192][3];
+-                int *scalefac = &sfBandIndex[config.mpeg.samplerate_index+(config.mpeg.type*3)].s[0];
++                const int *scalefac = &sfBandIndex[config.mpeg.samplerate_index+(config.mpeg.type*3)].s[0];
+ 		
+@@ -591,3 +560,3 @@
+ 	    { /* Long blocks */
+-                int *scalefac = &sfBandIndex[config.mpeg.samplerate_index+(config.mpeg.type*3)].l[0];
++                const int *scalefac = &sfBandIndex[config.mpeg.samplerate_index+(config.mpeg.type*3)].l[0];
+ 		unsigned scalefac_index = 100;
+@@ -666,3 +635,3 @@
+     c1bits = bitsWritten - bvbits;
+-    if ( (stuffingBits = gi->part2_3_length - gi->part2_length - bitsWritten) )
++    if ( (stuffingBits = gi->part2_3_length - gi->part2_length - bitsWritten) != 0 )
+     {
+@@ -685,3 +654,3 @@
+ 
+-int abs_and_sign( int *x )
++int EncoderInterface::abs_and_sign( int *x )
+ {
+@@ -692,3 +661,3 @@
+ 
+-int L3_huffman_coder_count1( BF_PartHolder **pph, struct huffcodetab *h, int v, int w, int x, int y )
++int EncoderInterface::L3_huffman_coder_count1( BF_PartHolder **pph, const struct huffcodetab *h, int v, int w, int x, int y )
+ {
+@@ -734,3 +703,3 @@
+ /* Implements the pseudocode of page 98 of the IS */
+-int HuffmanCode(int table_select, int x, int y, unsigned int *code, 
++int EncoderInterface::HuffmanCode(int table_select, int x, int y, unsigned int *code, 
+                 unsigned int *ext, int *cbits, int *xbits )
+@@ -738,3 +707,3 @@
+     unsigned signx, signy, linbitsx, linbitsy, linbits, xlen, ylen, idx;
+-    struct huffcodetab *h;
++    const struct huffcodetab *h;
+ 
+diff -bBru -1 ./8hz-mp3/l3bitstream.h ./8hz-mp3-mine/l3bitstream.h
+--- ./8hz-mp3/l3bitstream.h	Tue May 12 11:48:25 1998
++++ ./8hz-mp3-mine/l3bitstream.h	Tue Dec  1 21:42:14 1998
+@@ -7,17 +7,3 @@
+ 
+-typedef   bitstream_t L3_bitstream_t;
+ 
+-void L3_format_bitstream(int              l3_enc[2][2][576],
+-                         L3_side_info_t  *l3_side,
+-			 L3_scalefac_t   *scalefac,
+-			 L3_bitstream_t  *in_bs,
+-			 double           (*xr)[2][576],
+-			 char             *ancillary,
+-			 int              anc_bits);
+-
+-int HuffmanCode(int table_select, int x, int y, unsigned *code,
+-                unsigned int *extword, int *codebits, int *extbits);
+-
+-void L3_FlushBitstream();
+-int abs_and_sign(int *x); /* returns signx and changes *x to abs(*x) */
+ 
+diff -bBru -1 ./8hz-mp3/l3loop.c ./8hz-mp3-mine/l3loop.c
+--- ./8hz-mp3/l3loop.c	Mon Jun  1 03:53:24 1998
++++ ./8hz-mp3-mine/l3loop.c	Thu Apr  8 21:06:28 1999
+@@ -5,26 +5,13 @@
+ 
+-#include <math.h>
+ 
+-#include "types.h"
+-#include "error.h"
+-#include "tables.h"
+-#include "layer3.h"
+-#include "l3loop.h"
+-#include "huffman.h"
+-#include "l3bitstream.h"
+-#include "reservoir.h"
++#include "MP3Encoder.h"
+ 
+ 
+-int bin_search_StepSize(int desired_rate, double start, int ix[576],
+-           double xrs[576], gr_info * cod_info);
+ 
+-int count_bits();
+ 
+-float worst_xfsf_to_xmin_ratio();
+ 
+-#define PRECALC_SIZE 1024 /* WAS 256 !!! */
+-static double pow43[PRECALC_SIZE];
+-#include "sqrttab.h"
+ 
+ #ifndef HAVE_NINT
++int nint(double in);
++
+ int nint(double in)
+@@ -44,3 +31,3 @@
+ */
+-static unsigned nr_of_sfb_block[6][3][4] =
++const unsigned EncoderInterface::nr_of_sfb_block[6][3][4] =
+ {
+@@ -55,3 +42,3 @@
+ /* Table B.6: layer3 preemphasis */
+-int  pretab[21] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
++const int  EncoderInterface::pretab[21] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                     1, 1, 1, 1, 2, 2, 3, 3, 3, 2 };
+@@ -59,9 +46,5 @@
+ /* This is the scfsi_band table from 2.4.2.7 of the IS */
+-int scfsi_band_long[5] = { 0, 6, 11, 16, 21 };
++const int EncoderInterface::scfsi_band_long[5] = { 0, 6, 11, 16, 21 };
+ 
+-struct
+-{
+-    unsigned region0_count;
+-    unsigned region1_count;
+-} subdv_table[ 23 ] =
++const struct subdv_table_type EncoderInterface::subdv_table[ 23 ] =
+ {
+@@ -93,6 +76,2 @@
+ 
+-int *scalefac_band_long  = &sfBandIndex[3].l[0];
+-int *scalefac_band_short = &sfBandIndex[3].s[0];
+-
+-
+ 
+@@ -102,28 +81,5 @@
+ 
+-int quantanf_init(double xr[576]);
+-void calc_scfsi( double  xr[576], L3_side_info_t *l3_side, L3_psy_xmin_t *l3_xmin, int ch, int gr );
+-int part2_length(L3_scalefac_t *scalefac, int gr, int ch, L3_side_info_t *si);
+-int scale_bitcount(L3_scalefac_t *scalefac, gr_info *cod_info, int gr, int ch );
+-void calc_noise(double xr[576], int ix[576], gr_info *cod_info, double xfsf[4][CBLIMIT] );
+ 
+-int bin_search_StepSize(int desired_rate, double start, int *ix, double xrs[576], gr_info * cod_info);
+-int count_bits(int *ix /*int[576]*/, gr_info *cod_info);
+-void gr_deco( gr_info *cod_info );
+-int count_bit(int ix[576], unsigned int start, unsigned int end, unsigned int table );
+-int bigv_bitcount(int ix[576], gr_info *gi);
+-int choose_table( int max );
+-int new_choose_table( int ix[576], unsigned int begin, unsigned int end );
+-void bigv_tab_select( int ix[576], gr_info *cod_info );
+-void subdivide(gr_info *cod_info);
+-int count1_bitcount( int ix[ 576 ], gr_info *cod_info );
+-void calc_runlen( int ix[576], gr_info *cod_info );
+ 
+ 
+-void calc_xmin(double xr[2][2][576], L3_psy_ratio_t *ratio, gr_info *cod_info, L3_psy_xmin_t *l3_xmin, int gr, int ch );
+-int loop_break(L3_scalefac_t *scalefac, gr_info *cod_info, int gr, int ch);
+-void preemphasis(double xr[576], double xfsf[4][CBLIMIT], L3_psy_xmin_t  *l3_xmin, int gr, int ch, L3_side_info_t *l3_side );
+-int amp_scalefac_bands(double xr[576], double xfsf[4][CBLIMIT], L3_psy_xmin_t    *l3_xmin, L3_side_info_t *l3_side, L3_scalefac_t  *scalefac, int gr, int ch, int iteration );
+-void quantize( double xr[576], int ix[576], gr_info *cod_info );
+-int ix_max( int ix[576], unsigned int begin, unsigned int end );
+-double xr_max( double xr[576], unsigned int begin, unsigned int end );
+ 
+@@ -132,4 +88,3 @@
+ 
+-
+-void L3_loop_initialise()
++void EncoderInterface::L3_loop_initialise()
+ {
+@@ -142,3 +97,3 @@
+ 
+-static int inner_loop(double xr[2][2][576],  int l3_enc[2][2][576], 
++ int EncoderInterface::inner_loop(double xr[2][2][576],  int l3_enc[2][2][576], 
+                       int max_bits, gr_info *cod_info, int gr, int ch )
+@@ -180,3 +135,3 @@
+ 
+-static int outer_loop( double xr[2][2][576],     /*  magnitudes of the spectral values */
++ int EncoderInterface::outer_loop( double xr[2][2][576],     /*  magnitudes of the spectral values */
+                        int max_bits,
+@@ -265,3 +220,3 @@
+ 
+-void L3_iteration_loop(double          pe[][2], 
++void EncoderInterface::L3_iteration_loop(double          pe[][2], 
+                        double          mdct_freq_org[2][2][576], 
+@@ -282,3 +237,3 @@
+     int ch, gr, sfb, i;
+-    static int firstcall = 1;
++
+ 
+@@ -361,4 +316,5 @@
+ 	    cod_info->global_gain = nint(cod_info->quantizerStepSize+210.0);
+-
+-            if(cod_info->global_gain>=256) ERROR("gain>256, program error.");
++//Mitchell Modification
++//            if(cod_info->global_gain>=256) ERROR("gain>256, program error.");
++            if(cod_info->global_gain>=256) cod_info->global_gain=255;
+         } /* for ch */
+@@ -374,3 +330,3 @@
+ /************************************************************************/
+-int quantanf_init(double xr[576])
++int EncoderInterface::quantanf_init(double xr[576])
+ /* Function: Calculate the first quantization step quantanf.       */
+@@ -420,9 +376,5 @@
+ 
+-void calc_scfsi( double  xr[576], L3_side_info_t *l3_side,
++void EncoderInterface::calc_scfsi( double  xr[576], L3_side_info_t *l3_side,
+ 	    L3_psy_xmin_t *l3_xmin, int ch, int gr )
+ {
+-    static int en_tot[2][2]; /* ch,gr */
+-    static int en[2][2][21];
+-    static int xm[2][2][21];
+-    static int xrmax[2][2];
+ 
+@@ -524,3 +476,3 @@
+ 
+-int part2_length(L3_scalefac_t *scalefac, 
++int EncoderInterface::part2_length(L3_scalefac_t *, 
+                  int gr, int ch, 
+@@ -538,4 +490,4 @@
+     {
+-	static int slen1_tab[16] = { 0, 0, 0, 0, 3, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4 };
+-	static int slen2_tab[16] = { 0, 1, 2, 3, 0, 1, 2, 3, 1, 2, 3, 1, 2, 3, 2, 3 };
++//	static int slen1_tab[16] = { 0, 0, 0, 0, 3, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4 };
++//	static int slen2_tab[16] = { 0, 1, 2, 3, 0, 1, 2, 3, 1, 2, 3, 1, 2, 3, 2, 3 };
+ 
+@@ -584,5 +536,8 @@
+ 
++    const int EncoderInterface::pow2[5]   = { 1, 2, 4, 8, 16 };
+ 
++const int EncoderInterface::slen1[16] = { 0, 0, 0, 0, 3, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4 };
++const int EncoderInterface::slen2[16] = { 0, 1, 2, 3, 0, 1, 2, 3, 1, 2, 3, 1, 2, 3, 2, 3 };
+ 
+-int scale_bitcount(L3_scalefac_t *scalefac, 
++int EncoderInterface::scale_bitcount(L3_scalefac_t *scalefac, 
+                    gr_info *cod_info,
+@@ -594,6 +549,3 @@
+     int i, k, sfb, max_slen1 = 0, max_slen2 = 0, /*a, b, */ ep = 2;
+-
+-    static int slen1[16] = { 0, 0, 0, 0, 3, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4 };
+-    static int slen2[16] = { 0, 1, 2, 3, 0, 1, 2, 3, 1, 2, 3, 1, 2, 3, 2, 3 };
+-    static int pow2[5]   = { 1, 2, 4, 8, 16 };
++//
+ 
+@@ -657,3 +609,3 @@
+ 
+-void calc_noise(double xr[576], 
++void EncoderInterface::calc_noise(double xr[576], 
+                 int ix[576], 
+@@ -689,3 +641,3 @@
+                temp = fabs(xr[l]) - pow((double)ix[l],4.0/3.0)*step;
+-                printf("EHHHHHHH !?!?! ---> %d\n",ix[l]);
++                printf("EHHHHHHH1 !?!?! ---> %d\n",ix[l]);
+             }
+@@ -715,3 +667,3 @@
+                     temp = fabs((*xr_s)[l][i]) - pow((double)(*ix_s)[l][i],4.0/3.0)*step;
+-                    printf("EHHHHHHH !?!?! ---> %d\n",(*ix_s)[l][i]);
++                    printf("EHHHHHHH2 !?!?! ---> %d\n",(*ix_s)[l][i]);
+                 }
+@@ -728,3 +680,3 @@
+ 
+-void calc_xmin(double xr[2][2][576], 
++void EncoderInterface::calc_xmin(double xr[2][2][576], 
+                L3_psy_ratio_t *ratio,
+@@ -773,3 +725,3 @@
+ 
+-int loop_break(L3_scalefac_t *scalefac, 
++int EncoderInterface::loop_break(L3_scalefac_t *scalefac, 
+                gr_info *cod_info,
+@@ -798,3 +750,3 @@
+ 
+-void preemphasis(double xr[576], 
++void EncoderInterface::preemphasis(double xr[576], 
+                  double xfsf[4][CBLIMIT],
+@@ -860,3 +812,3 @@
+ 
+-int amp_scalefac_bands(double xr[576], 
++int EncoderInterface::amp_scalefac_bands(double xr[576], 
+                        double xfsf[4][CBLIMIT],
+@@ -979,3 +931,3 @@
+ 
+-void quantize( double xr[576], int ix[576], gr_info *cod_info )
++void EncoderInterface::quantize( double xr[576], int ix[576], gr_info *cod_info )
+ /*************************************************************************/
+@@ -1066,3 +1018,3 @@
+ 
+-int ix_max( int ix[576], unsigned int begin, unsigned int end )
++int EncoderInterface::ix_max( int ix[576], unsigned int begin, unsigned int end )
+ /*************************************************************************/
+@@ -1086,3 +1038,3 @@
+ /* THIS FUNCTION HAS BEEN CHANGED ..... */
+-double xr_max( double xr[576], unsigned int begin, unsigned int end )
++double EncoderInterface::xr_max( double xr[576], unsigned int begin, unsigned int end )
+ /*************************************************************************/
+@@ -1114,3 +1066,3 @@
+ 
+-void calc_runlen( int ix[576], gr_info *cod_info )
++void EncoderInterface::calc_runlen( int ix[576], gr_info *cod_info )
+ /*************************************************************************/
+@@ -1155,3 +1107,3 @@
+ /* THIS FUNCTION HAS BEEN CHANGED ..... */
+-int count1_bitcount(int ix[576], gr_info *cod_info)
++int EncoderInterface::count1_bitcount(int ix[576], gr_info *cod_info)
+ /*************************************************************************/
+@@ -1204,3 +1156,3 @@
+ 
+-void subdivide(gr_info *cod_info)
++void EncoderInterface::subdivide(gr_info *cod_info)
+ /*************************************************************************/
+@@ -1280,3 +1232,3 @@
+ 
+-void bigv_tab_select( int ix[576], gr_info *cod_info )
++void EncoderInterface::bigv_tab_select( int ix[576], gr_info *cod_info )
+ /*************************************************************************/
+@@ -1345,3 +1297,3 @@
+ 
+-int new_choose_table( int ix[576], unsigned int begin, unsigned int end )
++int EncoderInterface::new_choose_table( int ix[576], unsigned int begin, unsigned int end )
+ /*************************************************************************/
+@@ -1458,3 +1410,3 @@
+ 
+-int choose_table( int max )
++int EncoderInterface::choose_table( int max )
+ /*************************************************************************/
+@@ -1500,3 +1452,3 @@
+ 
+-int bigv_bitcount(int ix[576], gr_info *gi)
++int EncoderInterface::bigv_bitcount(int ix[576], gr_info *gi)
+ /*************************************************************************/
+@@ -1568,3 +1520,3 @@
+ 
+-int count_bit(int ix[576], 
++int EncoderInterface::count_bit(int ix[576], 
+               unsigned int start, 
+@@ -1579,3 +1531,3 @@
+     register int        x,y;
+-    struct huffcodetab *h;
++    const struct huffcodetab *h;
+ 
+@@ -1657,3 +1609,3 @@
+ 
+-void gr_deco( gr_info *cod_info )
++void EncoderInterface::gr_deco( gr_info *cod_info )
+ {
+@@ -1692,3 +1644,3 @@
+ 
+-int count_bits(int *ix /*int[576]*/, gr_info *cod_info)
++int EncoderInterface::count_bits(int *ix /*int[576]*/, gr_info *cod_info)
+ {
+@@ -1710,3 +1662,3 @@
+ 
+-int bin_search_StepSize(int desired_rate, double start, int *ix,
++int EncoderInterface::bin_search_StepSize(int desired_rate, double start, int *ix,
+                         double xrs[576], gr_info * cod_info)
+diff -bBru -1 ./8hz-mp3/l3loop.h ./8hz-mp3-mine/l3loop.h
+--- ./8hz-mp3/l3loop.h	Wed May 13 07:36:14 1998
++++ ./8hz-mp3-mine/l3loop.h	Tue Dec  1 22:08:25 1998
+@@ -6,17 +6,6 @@
+ 
+-#define e              2.71828182845
+-#define CBLIMIT       21
+-#define SFB_LMAX 22
+-#define SFB_SMAX 13
+ 
+ 
+-void L3_loop_initialise();
+ 
+-void L3_iteration_loop(double          pe[][2], 
+-                       double          mdct_freq_org[2][2][576], 
+-                       L3_psy_ratio_t *ratio,
+-       		       L3_side_info_t *side_info, 
+-                       int             l3_enc[2][2][576],
+-		       int             mean_bits, 
+-		       L3_scalefac_t  *scalefacitor );
++
+ 
+diff -bBru -1 ./8hz-mp3/l3mdct.c ./8hz-mp3-mine/l3mdct.c
+--- ./8hz-mp3/l3mdct.c	Sun May 31 18:14:02 1998
++++ ./8hz-mp3-mine/l3mdct.c	Tue Aug 17 01:55:00 1999
+@@ -2,5 +2,3 @@
+ 
+-#include "types.h"
+-#include "layer3.h"
+-#include "l3mdct.h"
++#include "MP3Encoder.h"
+ 
+@@ -8,12 +6,5 @@
+ /* This is table B.9: coefficients for aliasing reduction */
+-static double c[8] = { -0.6,-0.535,-0.33,-0.185,-0.095,-0.041,-0.0142, -0.0037 };
+-static double ca[8];
+-static double cs[8];
++const double EncoderInterface::c[8] = { -0.6,-0.535,-0.33,-0.185,-0.095,-0.041,-0.0142, -0.0037 };
+ 
+-static double win[4][36];
+-static double cos_s[6][12];
+-static double cos_l[18][36];
+-
+-
+-void L3_mdct_initialise()
++void EncoderInterface::L3_mdct_initialise()
+ {
+@@ -31,7 +22,7 @@
+     /* type 0 */
+-    for(i=0; i < 36; i++ ) win[0][i] = sin( PI/36 * (i + 0.5) );
++    for(i=0; i < 36; i++ ) win[0][i] = sin( M_PI/36 * (i + 0.5) );
+     /* type 1*/
+-    for(i=0; i < 18; i++ ) win[1][i] = sin( PI/36 * (i + 0.5) );
++    for(i=0; i < 18; i++ ) win[1][i] = sin( M_PI/36 * (i + 0.5) );
+     for(i=18; i < 24; i++ ) win[1][i] = 1.0;
+-    for(i=24; i < 30; i++ ) win[1][i] = sin( PI/12 * ( i + 0.5 - 18) );
++    for(i=24; i < 30; i++ ) win[1][i] = sin( M_PI/12 * ( i + 0.5 - 18) );
+     for(i=30; i < 36; i++ ) win[1][i] = 0.0;
+@@ -39,7 +30,7 @@
+     for(i= 0; i < 6; i++ ) win[3][i] = 0.0;
+-    for(i= 6; i < 12; i++ ) win[3][i] = sin( PI/12 * (i + 0.5 - 6) );
++    for(i= 6; i < 12; i++ ) win[3][i] = sin( M_PI/12 * (i + 0.5 - 6) );
+     for(i= 12; i < 18; i++ ) win[3][i] = 1.0;
+-    for(i= 18; i < 36; i++ ) win[3][i] = sin( PI/36 * (i + 0.5) );
++    for(i= 18; i < 36; i++ ) win[3][i] = sin( M_PI/36 * (i + 0.5) );
+     /* type 2*/
+-    for(i=0; i < 12; i++ ) win[2][i] = sin( PI/12 * (i + 0.5) );
++    for(i=0; i < 12; i++ ) win[2][i] = sin( M_PI/12 * (i + 0.5) );
+     for(i=12; i < 36; i++ ) win[2][i] = 0.0;
+@@ -49,3 +40,3 @@
+       for (k = 0; k < N; k++ )
+-        cos_s[m][k] = cos( (PI /(2 * N)) * (2 * k + 1 + N / 2) *
++        cos_s[m][k] = cos( (M_PI /(2 * N)) * (2 * k + 1 + N / 2) *
+                      (2 * m + 1) ) / (N / 4);
+@@ -55,3 +46,3 @@
+       for (k = 0; k < N; k++ )
+-        cos_l[m][k] = cos( (PI / (2 * N)) * (2 * k + 1 + N / 2) *
++        cos_l[m][k] = cos( (M_PI / (2 * N)) * (2 * k + 1 + N / 2) *
+                      (2 * m + 1) ) / (N / 4);
+@@ -61,3 +52,3 @@
+ 
+-static void mdct( double *in, double *out, int block_type )
++void EncoderInterface::mdct( double *in, double *out, int block_type )
+ /*-------------------------------------------------------------------*/
+@@ -75,5 +66,6 @@
+     double sum;
+-
++//printf ("Starting up an mdct...\n");
+     if(block_type==2)
+     {
++//    printf ("Block type 2.\n");
+         N=12;
+@@ -90,2 +82,3 @@
+     {
++//     printf ("Block size not 2.\n");
+         N=36;
+@@ -94,4 +87,6 @@
+             sum=0.0;
+-            for(k=0;k<N;k++)
++            for(k=0;k<N;k++) {
++//            	printf ("bt: %d N: %d K: %d m: %d\n",block_type, N, k, m);
+                 sum += win[block_type][k] * in[k] * cos_l[m][k];
++            };
+             out[m] = sum;
+@@ -99,2 +94,3 @@
+     }
++//printf ("Now that wasn't so hard, was it?\n");
+ }
+@@ -102,3 +98,3 @@
+ 
+-void L3_mdct_sub(double sb_sample[2][3][18][SBLIMIT], 
++void EncoderInterface::L3_mdct_sub(double sb_sample[2][3][18][SBLIMIT], 
+                  double (*mdct_freq)[2][576], 
+@@ -136,3 +132,3 @@
+ 		if(cod_info->mixed_block_flag && (band<2)) block_type=0;
+-		
++//		printf ("Getting set to call mdct with gr: %d ch: %d band: %d block: %d\n", gr, ch, band, block_type);
+ 		mdct(mdct_in,&mdct_enc[gr][ch][band][0],block_type);
+diff -bBru -1 ./8hz-mp3/l3mdct.h ./8hz-mp3-mine/l3mdct.h
+--- ./8hz-mp3/l3mdct.h	Tue May 12 11:48:25 1998
++++ ./8hz-mp3-mine/l3mdct.h	Tue Dec  1 23:21:22 1998
+@@ -6,6 +6,2 @@
+ 
+-void L3_mdct_initialise();
+-void L3_mdct_sub(double sb_sample[2][3][18][SBLIMIT], 
+-                 double (*mdct_freq)[2][576], 
+-                 L3_side_info_t *side_info);
+ 
+diff -bBru -1 ./8hz-mp3/l3psy.c ./8hz-mp3-mine/l3psy.c
+--- ./8hz-mp3/l3psy.c	Sun May 31 18:24:53 1998
++++ ./8hz-mp3-mine/l3psy.c	Wed Aug 18 02:19:31 1999
+@@ -1,10 +1,22 @@
+-#include <stdio.h>
+ 
+-#include "types.h"
+-#include "error.h"
+-#include "layer3.h"
+-#include "l3psy.h"
++#include "MP3Encoder.h"
+ 
+-#include "fft.h"
+-#include "tables.h"
++
++typedef int        ICB[CBANDS];
++typedef int        IHBLK[HBLKSIZE];
++typedef float      F32[32];
++typedef float      F2_32[2][32];
++typedef float      FCB[CBANDS];
++typedef float      FCBCB[CBANDS][CBANDS];
++typedef float      FBLK[BLKSIZE];
++typedef float      FHBLK[HBLKSIZE];
++typedef float      F2HBLK[2][HBLKSIZE];
++typedef float      F22HBLK[2][2][HBLKSIZE];
++typedef double     DCB[CBANDS];
++
++/* #define switch_pe        1800 */
++#define NORM_TYPE       0
++#define START_TYPE      1
++#define SHORT_TYPE      2
++#define STOP_TYPE       3
+ 
+@@ -15,32 +27,3 @@
+ 
+-    static double ratio[2][21];
+-    static double ratio_s[2][12][3];
+-/* The static variables "r", "phi_sav", "new", "old" and "oldest" have    */
+-/* to be remembered for the unpredictability measure.  For "r" and        */
+-/* "phi_sav", the first index from the left is the channel select and     */
+-/* the second index is the "age" of the data.                             */
+-    static float   window_s[BLKSIZE_s] ;
+-    static int     new = 0, old = 1, oldest = 0;
+-    static int     flush, sync_flush, syncsize;
+-    static double 	cw[HBLKSIZE], eb[CBANDS];
+-    static double 	ctb[CBANDS];
+-    static double	SNR_l[CBANDS], SNR_s[CBANDS_s];
+-    static double	minval[CBANDS],qthr_l[CBANDS],norm_l[CBANDS];
+-    static double	qthr_s[CBANDS_s],norm_s[CBANDS_s];
+-    static double	nb_1[2][CBANDS], nb_2[2][CBANDS];
+-    static double	s3_l[CBANDS][CBANDS]; /* s3_s[CBANDS_s][CBANDS_s]; */
+-
+-/* Scale Factor Bands */
+-    static int	cbw_l[SBMAX_l],bu_l[SBMAX_l],bo_l[SBMAX_l] ;
+-    static int	cbw_s[SBMAX_s],bu_s[SBMAX_s],bo_s[SBMAX_s] ;
+-    static double	w1_l[SBMAX_l], w2_l[SBMAX_l];
+-    static double	w1_s[SBMAX_s], w2_s[SBMAX_s];
+-    static double	en[SBMAX_l],   thm[SBMAX_l] ;
+-    static int	blocktype_old[2] ;
+-    static int	partition_l[HBLKSIZE],partition_s[HBLKSIZE_s];
+-    static float   *absthr;
+-
+-
+-/* The following static variables are constants.                           */
+-     static float   crit_band[27] = {0,  100,  200, 300, 400, 510, 630,  770,
++const float   EncoderInterface::crit_band[27] = {0,  100,  200, 300, 400, 510, 630,  770,
+                                      920, 1080, 1270,1480,1720,2000,2320, 2700,
+@@ -48,28 +31,4 @@
+                                      15500,25000,30000};
+-
+-    static float	energy_s[3][256];
+-    static float   phi_s[3][256] ; /* 256 samples not 129 */
+-
+-    static	int     numlines[CBANDS];
+-    static int     partition[HBLKSIZE];
+-    static float   cbval[CBANDS];
+-    static float   rnorm[CBANDS];
+-    static float   window[BLKSIZE];
+-    static double  tmn[CBANDS];
+-    static float   s[CBANDS][CBANDS];
+-    static float   lthr[2][HBLKSIZE];
+-    static float   r[2][2][HBLKSIZE];
+-    static float   phi_sav[2][2][HBLKSIZE];
+-   
+-    static float   nb[CBANDS]; 
+-    static float   cb[CBANDS];
+-    static float   ecb[CBANDS];
+-    static float   wsamp_r[BLKSIZE];
+-    static float   wsamp_i[BLKSIZE];
+-    static float   phi[BLKSIZE];
+-    static float   energy[BLKSIZE];
+-    static float   fthr[HBLKSIZE];
+-
+ void L3para_read();
+-void L3_psycho_initialise()
++void EncoderInterface::L3_psycho_initialise()
+ {
+@@ -96,4 +55,4 @@
+ /* calculate HANN window coefficients */
+-     for(i=0;i<BLKSIZE;i++)  window[i]  = 0.5*(1-cos(2.0*PI*(i-0.5)/BLKSIZE));
+-     for(i=0;i<BLKSIZE_s;i++)window_s[i]= 0.5*(1-cos(2.0*PI*(i-0.5)/BLKSIZE_s));
++     for(i=0;i<BLKSIZE;i++)  window[i]  = 0.5*(1-cos(2.0*M_PI*(i-0.5)/BLKSIZE));
++     for(i=0;i<BLKSIZE_s;i++)window_s[i]= 0.5*(1-cos(2.0*M_PI*(i-0.5)/BLKSIZE_s));
+ 
+@@ -186,6 +145,6 @@
+ 
+-void L3_psycho_analize(int      channel,
++void EncoderInterface::L3_psycho_analize(int      channel,
+                        short   *buffer, 
+                        short    savebuf[1344], 
+-                       float    snr32[32],
++                       float    [],
+                        double   ratio_d[21], 
+@@ -203,3 +162,3 @@
+ 
+-    for ( j = 0; j < 21; j++ ) ratio_d[j] = ratio[channel][j];
++    for ( j = 0; j < 21; j++ ) ratio_d[j] = l3_psy_ratio[channel][j];
+ 	for ( j = 0; j < 12; j++ )
+@@ -209,5 +168,5 @@
+     if ( channel == 0 )
+-        if ( new == 0 )
++        if ( nnew == 0 )
+ 	{
+-	    new = 1;
++	    nnew = 1;
+ 	    old = 0;
+@@ -217,3 +176,3 @@
+ 	{
+-	    new = 0;
++	    nnew = 0;
+ 	    old = 1;
+@@ -249,7 +209,7 @@
+ 	    phi_prime = 2.0 * phi_sav[channel][old][j]-phi_sav[channel][oldest][j];
+-	    r[channel][new][j] = sqrt((double) energy[j]);
+-	    phi_sav[channel][new][j] = phi[j];
+-	    temp1 = r[channel][new][j] * cos((double) phi[j]) - r_prime * cos(phi_prime);
+-	    temp2 = r[channel][new][j] * sin((double) phi[j]) - r_prime * sin(phi_prime);
+-	    temp3 = r[channel][new][j] + fabs(r_prime);
++	    r[channel][nnew][j] = sqrt((double) energy[j]);
++	    phi_sav[channel][nnew][j] = phi[j];
++	    temp1 = r[channel][nnew][j] * cos((double) phi[j]) - r_prime * cos(phi_prime);
++	    temp2 = r[channel][nnew][j] * sin((double) phi[j]) - r_prime * sin(phi_prime);
++	    temp3 = r[channel][nnew][j] + fabs(r_prime);
+ 	    
+@@ -319,2 +280,3 @@
+ 	    {
++//	    printf ("tp: %d j: %d\n", tp, j);
+ 		eb[tp] += energy[j];
+@@ -408,3 +371,3 @@
+ 	    {
+-		en[sb] = w1_l[sb] * eb[bu_l[sb]] + w2_l[sb] * eb[bo_l[sb]];
++		l3psy_en[sb] = w1_l[sb] * eb[bu_l[sb]] + w2_l[sb] * eb[bo_l[sb]];
+ 		thm[sb] = w1_l[sb] *thr[bu_l[sb]] + w2_l[sb] * thr[bo_l[sb]];
+@@ -412,9 +375,9 @@
+ 		{
+-		    en[sb]  += eb[b];
++		    l3psy_en[sb]  += eb[b];
+ 		    thm[sb] += thr[b];
+ 		}
+-		if ( en[sb] != 0.0 )
+-		    ratio[channel][sb] = thm[sb]/en[sb];
++		if ( l3psy_en[sb] != 0.0 )
++		    l3_psy_ratio[channel][sb] = thm[sb]/l3psy_en[sb];
+ 		else
+-		    ratio[channel][sb] = 0.0;
++		    l3_psy_ratio[channel][sb] = 0.0;
+ 	    }
+@@ -448,3 +411,3 @@
+ 		{
+-		    en[sb]  = w1_s[sb] * eb[bu_s[sb]] + w2_s[sb] * eb[bo_s[sb]];
++		    l3psy_en[sb]  = w1_s[sb] * eb[bu_s[sb]] + w2_s[sb] * eb[bo_s[sb]];
+ 		    thm[sb] = w1_s[sb] *thr[bu_s[sb]] + w2_s[sb] * thr[bo_s[sb]];
+@@ -452,6 +415,6 @@
+ 		    {
+-			en[sb]  += eb[b];
++			l3psy_en[sb]  += eb[b];
+ 			thm[sb] += thr[b];
+ 		    }
+-		    if(en[sb]!=0.0) ratio_s[channel][sb][sblock] = thm[sb]/en[sb];
++		    if(l3psy_en[sb]!=0.0) ratio_s[channel][sb][sblock] = thm[sb]/l3psy_en[sb];
+ 		    else            ratio_s[channel][sb][sblock] = 0.0;
+@@ -470,17 +433,9 @@
+ 
+-}
+-
+-
+-
+-
+-
+-
+-
+ 
++}
+ 
+-#include "psy_data.h"
+-void L3para_read()
++void EncoderInterface::L3para_read()
+ {
+ int curr_line = 0;
+-char *temp;
++const char *temp;
+    double freq_tp;
+@@ -497,3 +452,4 @@
+       {
+-temp = psy_data[curr_line++];
++
++		temp = psy_data[curr_line++];
+ 	sscanf(temp,"freq = %lf partition = %d\n",&freq_tp,&cbmax_tp);
+@@ -506,3 +462,3 @@
+ 	       {
+-temp = psy_data[curr_line++];
++				temp = psy_data[curr_line++];
+ 		sscanf(temp,
+@@ -514,4 +470,5 @@
+ 	         }
+-		for(k=0;k<numlines[i];k++)
++				for(k=0;k<numlines[i];k++) {
+ 		  partition_l[k2++] = i ;
++				};
+ 		}
+@@ -522,4 +479,4 @@
+ 	       {
+-char *temp;
+-temp = psy_data[curr_line++];
++				const char *temp;
++				temp = psy_data[curr_line++];
+ 	        sscanf(temp,"No=%d %s\n",&i,tp);
+diff -bBru -1 ./8hz-mp3/l3psy.h ./8hz-mp3-mine/l3psy.h
+--- ./8hz-mp3/l3psy.h	Tue May 12 11:48:25 1998
++++ ./8hz-mp3-mine/l3psy.h	Tue Dec  1 23:28:49 1998
+@@ -6,29 +6,2 @@
+ 
+-#define HBLKSIZE    513
+-#define CBANDS       63 
+-#define CBANDS_s     42
+-#define BLKSIZE_s   256
+-#define HBLKSIZE_s  129
+-#define TCBMAX_l     63
+-#define TCBMAX_s     42
+-#define SBMAX_l      21
+-#define SBMAX_s      12
+-
+-typedef int        ICB[CBANDS];
+-typedef int        IHBLK[HBLKSIZE];
+-typedef float      F32[32];
+-typedef float      F2_32[2][32];
+-typedef float      FCB[CBANDS];
+-typedef float      FCBCB[CBANDS][CBANDS];
+-typedef float      FBLK[BLKSIZE];
+-typedef float      FHBLK[HBLKSIZE];
+-typedef float      F2HBLK[2][HBLKSIZE];
+-typedef float      F22HBLK[2][2][HBLKSIZE];
+-typedef double     DCB[CBANDS];
+-
+-/* #define switch_pe        1800 */
+-#define NORM_TYPE       0
+-#define START_TYPE      1
+-#define SHORT_TYPE      2
+-#define STOP_TYPE       3
+ 
+@@ -37,11 +10,3 @@
+ 
+-void L3_psycho_initialise();
+-void L3_psycho_analize(int      channel,
+-                       short   *buffer, 
+-                       short    savebuf[1344],
+-                       float    snr32[32],
+-                       double   ratio_d[21],
+-                       double   ratio_ds[12][3],
+-                       double  *pe, 
+-                       gr_info *cod_info);
++
+ #endif
+diff -bBru -1 ./8hz-mp3/l3subband.c ./8hz-mp3-mine/l3subband.c
+--- ./8hz-mp3/l3subband.c	Sun May 31 18:14:23 1998
++++ ./8hz-mp3-mine/l3subband.c	Thu Apr  8 21:21:22 1999
+@@ -1,13 +1,7 @@
+ #include <math.h>
++#include "MP3Encoder.h"
+ 
+-#include "types.h"
+-#include "tables.h" 
+-#include "l3subband.h"
+ 
+ 
+-static off[2]    = {0,0};
+-static double x[2][HAN_SIZE];
+-static double filter[SBLIMIT][64];
+-
+-void L3_subband_initialise()
++void EncoderInterface::L3_subband_initialise()
+ {
+@@ -29,3 +23,3 @@
+       {
+-          if ((filter[i][k] = 1e9*cos((double)((2*i+1)*(16-k)*PI64))) >= 0)
++          if ((filter[i][k] = 1e9*cos((double)((2*i+1)*(16-k)*(M_PI_4/16)))) >= 0)
+                modf(filter[i][k]+0.5, &filter[i][k]);
+@@ -37,3 +31,3 @@
+ 
+-void L3_window_subband(short **buffer, double z[HAN_SIZE], int k)
++void EncoderInterface::L3_window_subband(short **buffer, double z[HAN_SIZE], int k)
+ /************************************************************************
+@@ -50,9 +44,9 @@
+     /* replace 32 oldest samples with 32 new samples */
+-    for (i=0;i<32;i++) x[k][31-i+off[k]] = (double)*(*buffer)++/SCALE;
++    for (i=0;i<32;i++) x[k][31-i+l3subband_off[k]] = (double)*(*buffer)++/SCALE;
+ 
+     /* shift samples into proper window positions */
+-    for (i=0;i<HAN_SIZE;i++) z[i] = x[k][(i+off[k])&(HAN_SIZE-1)] * enwindow[i];
++    for (i=0;i<HAN_SIZE;i++) z[i] = x[k][(i+l3subband_off[k])&(HAN_SIZE-1)] * enwindow[i];
+ 
+-    off[k] += 480;              /* offset is modulo (HAN_SIZE)*/
+-    off[k] &= HAN_SIZE-1;
++    l3subband_off[k] += 480;              /* offset is modulo (HAN_SIZE)*/
++    l3subband_off[k] &= HAN_SIZE-1;
+ }
+@@ -60,3 +54,3 @@
+ 
+-void L3_filter_subband(double z[HAN_SIZE], double s[SBLIMIT])
++void EncoderInterface::L3_filter_subband(double z[HAN_SIZE], double s[SBLIMIT])
+  /************************************************************************
+diff -bBru -1 ./8hz-mp3/l3subband.h ./8hz-mp3-mine/l3subband.h
+--- ./8hz-mp3/l3subband.h	Tue May 12 11:48:25 1998
++++ ./8hz-mp3-mine/l3subband.h	Tue Dec  1 23:47:44 1998
+@@ -5,5 +5,2 @@
+ 
+-void L3_subband_initialise();
+-void L3_window_subband(short **buffer, double z[HAN_SIZE], int k);
+-void L3_filter_subband(double z[HAN_SIZE], double s[SBLIMIT]);
+ 
+diff -bBru -1 ./8hz-mp3/layer3.c ./8hz-mp3-mine/layer3.c
+--- ./8hz-mp3/layer3.c	Mon Jun  1 03:42:42 1998
++++ ./8hz-mp3-mine/layer3.c	Wed Dec  2 20:50:01 1998
+@@ -1,159 +1,15 @@
+-#include <stdio.h>
+-#include <string.h>
+ 
+-#include "types.h"
+-#include "wave.h"
+-#include "error.h"
+-
+-#include "layer3.h"
+-#include "l3psy.h"
+-#include "l3subband.h"
+-#include "l3mdct.h"
+-#include "l3loop.h"
+-#include "l3bitstream.h"
+-#include "bitstream.h"
+ 
+-static void update_status(int frames_processed)
+-{
+-    printf("\015[Frame %6d of %6ld] (%2.2f%%)", 
+-            frames_processed,config.mpeg.total_frames,
+-            (float)((float)frames_processed/config.mpeg.total_frames)*100); 
+-    fflush(stdout);
+-}
++#include "MP3Encoder.h"
++
+ 
+ 
+-void L3_compress()
++void EncoderInterface::L3_compress()
+ {
+-    int             frames_processed;
+-    static short    buffer[2][1152];
+-    int             channel;
+-
+-    int             i;
+-    int             gr;
+-    short           sam[2][1344];
+-    float           snr32[32];
+-    L3_psy_ratio_t  ratio;
+-    double          pe[2][2];
+-    L3_side_info_t  side_info;
+-    short          *buffer_window[2];
+-    double          win_que[2][HAN_SIZE];
+-    double          l3_sb_sample[2][3][18][SBLIMIT];
+-    double          mdct_freq[2][2][576];
+-    int             l3_enc[2][2][576];
+-    L3_scalefac_t   scalefactor;
+-    bitstream_t     bs;
+- 
+-    double          avg_slots_per_frame;
+-    double          frac_slots_per_frame;
+-    long            whole_slots_per_frame;
+-    double          slot_lag;
+-    
+-    int             mean_bits;
+-    unsigned long   sent_bits  = 0;
+-    unsigned long   frame_bits = 0;
+-    int             sideinfo_len;
+-
+-    open_bit_stream_w(&bs, config.outfile, BUFFER_SIZE);
+-    
+-    memset((char*)snr32,0,sizeof(snr32));
+-    memset((char *)sam,0,sizeof(sam));
+-    memset((char *)&side_info,0,sizeof(L3_side_info_t));
+-
+-    L3_psycho_initialise();
+-    L3_subband_initialise();
+-    L3_mdct_initialise();
+-    L3_loop_initialise();
+-
+-    config.mpeg.mode_gr           = (config.mpeg.type==TYPE_MPEG_I)?   2:  1;
+-    config.mpeg.samples_per_frame = (config.mpeg.type==TYPE_MPEG_I)?1152:576;
+-    config.mpeg.total_frames      = config.wave.total_samples/config.mpeg.samples_per_frame;
+-    config.mpeg.bits_per_slot     = 8;
+-    frames_processed              = 0;
+-
+-    sideinfo_len = 32;
+-    if(config.mpeg.type==TYPE_MPEG_I)
+-    {   /* MPEG 1 */
+-        if(config.wave.channels==1) sideinfo_len += 136;
+-        else                        sideinfo_len += 256;
+-    }
+-    else
+-    {   /* MPEG 2 */
+-        if(config.wave.channels==1) sideinfo_len += 72;
+-        else                        sideinfo_len += 136;
+-    }
+-    if(config.mpeg.crc) sideinfo_len += 16;
+ 
+-/* Figure average number of 'slots' per frame. */
+-    avg_slots_per_frame   = ((double)config.mpeg.samples_per_frame / 
+-                             ((double)config.wave.samplerate/1000)) *
+-                            ((double)config.mpeg.bitr /
+-                             (double)config.mpeg.bits_per_slot);
+-    whole_slots_per_frame = (int)avg_slots_per_frame;
+-    frac_slots_per_frame  = avg_slots_per_frame - (double)whole_slots_per_frame;
+-    slot_lag              = -frac_slots_per_frame;
+-    if(frac_slots_per_frame==0) config.mpeg.padding = 0;
+ 
+-    while(wave_get(buffer))
++    while(true)//wave_get(buffer)
+     {
+-        update_status(frames_processed++);
+-
+-        buffer_window[0] = buffer[0];
+-        buffer_window[1] = buffer[1];
+-
+-        if(frac_slots_per_frame!=0)
+-            if(slot_lag>(frac_slots_per_frame-1.0))
+-            { /* No padding for this frame */
+-                slot_lag    -= frac_slots_per_frame;
+-                config.mpeg.padding = 0;
+-            }
+-            else 
+-            { /* Padding for this frame  */
+-                slot_lag    += (1-frac_slots_per_frame);
+-                config.mpeg.padding = 1;
+-            }
+-       config.mpeg.bits_per_frame = 8*(whole_slots_per_frame + config.mpeg.padding);
+-       mean_bits = (config.mpeg.bits_per_frame - sideinfo_len) / config.mpeg.mode_gr;
+-
+-/* psychoacousic model */
+-        for(gr=0;gr<config.mpeg.mode_gr;gr++)
+-            for(channel=0;channel<config.wave.channels;channel++)
+-                L3_psycho_analize(channel,
+-                                  &buffer[channel][gr*576],
+-                                  &sam[channel][0],&snr32[0],
+-                                  &ratio.l[gr][channel][0],
+-                                  &ratio.s[gr][channel][0],
+-                                  &pe[gr][channel],
+-                                  &side_info.gr[gr].ch[channel].tt);
+-
+-/* polyphase filtering */
+-        for(gr=0;gr<config.mpeg.mode_gr;gr++)
+-            for(channel=0;channel<config.wave.channels;channel++)
+-                for(i=0;i<18;i++)
+-                {
+-                    L3_window_subband(&buffer_window[channel],
+-                                      &win_que[channel][0],
+-                                      channel);
+-                    L3_filter_subband(&win_que[channel][0],
+-                                      &l3_sb_sample[channel][gr+1][i][0]);
+-                }
+-
+-/* apply mdct to the polyphase output */
+-        L3_mdct_sub(l3_sb_sample, mdct_freq, &side_info);
+-
+-
+-/* bit and noise allocation */
+-        L3_iteration_loop(pe,mdct_freq,&ratio,&side_info,
+-                          l3_enc, mean_bits,&scalefactor);
+-
+-
+-/* write the frame to the bitstream */
+-
+-       L3_format_bitstream(l3_enc,&side_info,&scalefactor, 
+-                           &bs,mdct_freq,NULL,0);
++   //     update_status(frames_processed++);
+ 
+-       frame_bits = sstell(&bs) - sent_bits;
+-/*
+-       if(frame_bits%config.mpeg.bits_per_slot) ERROR("This shouldn't happen, program error.");
+-*/
+-       sent_bits += frame_bits;
+     }    
+@@ -161,4 +17,2 @@
+ 
+-    L3_FlushBitstream();
+-    close_bit_stream_w(&bs);
+ 
+diff -bBru -1 ./8hz-mp3/layer3.h ./8hz-mp3-mine/layer3.h
+--- ./8hz-mp3/layer3.h	Sun May 31 18:14:36 1998
++++ ./8hz-mp3-mine/layer3.h	Tue Dec  1 21:48:04 1998
+@@ -4,57 +4,4 @@
+ /* Side information */
+-typedef struct {
+-        unsigned part2_3_length;
+-        unsigned big_values;
+-        unsigned count1;
+-        unsigned global_gain;
+-        unsigned scalefac_compress;
+-        unsigned window_switching_flag;
+-        unsigned block_type;
+-        unsigned mixed_block_flag;
+-        unsigned table_select[3];
+-int /*  unsigned */ subblock_gain[3];
+-        unsigned region0_count;
+-        unsigned region1_count;
+-        unsigned preflag;
+-        unsigned scalefac_scale;
+-        unsigned count1table_select;
+ 
+-        unsigned part2_length;
+-        unsigned sfb_lmax;
+-        unsigned sfb_smax;
+-        unsigned address1;
+-        unsigned address2;
+-        unsigned address3;
+-        double quantizerStepSize;
+-/* added for LSF */
+-        unsigned *sfb_partition_table;
+-        unsigned slen[4];
+-} gr_info;
+ 
+-typedef struct {
+-    int main_data_begin; /* unsigned -> int */
+-    unsigned private_bits;
+-    int resvDrain;
+-    unsigned scfsi[2][4];
+-    struct {
+-        struct {
+-            gr_info tt;
+-        } ch[2];
+-    } gr[2];
+-} L3_side_info_t;
+-
+-typedef struct {
+-    double  l[2][2][21];
+-    double  s[2][2][12][3];
+-} L3_psy_ratio_t;
+-
+-typedef struct {
+-        double  l[2][2][21];
+-        double  s[2][2][12][3];
+-} L3_psy_xmin_t;
+-
+-typedef struct {
+-    int l[2][2][22];            /* [cb] */
+-    int s[2][2][13][3];         /* [window][cb] */
+-} L3_scalefac_t;
+ 
+diff -bBru -1 ./8hz-mp3/portableio.c ./8hz-mp3-mine/portableio.c
+--- ./8hz-mp3/portableio.c	Tue May 12 11:48:25 1998
++++ ./8hz-mp3-mine/portableio.c	Wed Dec  2 00:07:53 1998
+@@ -51,6 +51,4 @@
+ 
+-#include	<stdio.h>
+-#include	<string.h>
+-#include	<math.h>
+-#include	"portableio.h"
++
++#include	"MP3Encoder.h"
+ 
+@@ -62,4 +60,3 @@
+ int
+-ReadByte(fp)
+-FILE *fp;
++EncoderInterface::ReadByte(FILE *fp)
+ {
+@@ -75,4 +72,3 @@
+ int
+-Read16BitsLowHigh(fp)
+-FILE *fp;
++EncoderInterface::Read16BitsLowHigh(FILE *fp)
+ {
+@@ -93,4 +89,3 @@
+ int
+-Read16BitsHighLow(fp)
+-FILE *fp;
++EncoderInterface::Read16BitsHighLow(FILE *fp)
+ {
+@@ -111,5 +106,3 @@
+ void
+-Write8Bits(fp, i)
+-FILE *fp;
+-int i;
++EncoderInterface::Write8Bits(FILE *fp, int i)
+ {
+@@ -120,5 +113,3 @@
+ void
+-Write16BitsLowHigh(fp, i)
+-FILE *fp;
+-int i;
++EncoderInterface::Write16BitsLowHigh(FILE *fp, int i)
+ {
+@@ -130,5 +121,3 @@
+ void
+-Write16BitsHighLow(fp, i)
+-FILE *fp;
+-int i;
++EncoderInterface::Write16BitsHighLow(FILE *fp, int i)
+ {
+@@ -140,4 +129,3 @@
+ int
+-Read24BitsHighLow(fp)
+-FILE *fp;
++EncoderInterface::Read24BitsHighLow(FILE *fp)
+ {
+@@ -160,4 +148,3 @@
+ int
+-Read32Bits(fp)
+-FILE *fp;
++EncoderInterface::Read32Bits(FILE *fp)
+ {
+@@ -178,4 +165,3 @@
+ int
+-Read32BitsHighLow(fp)
+-FILE *fp;
++EncoderInterface::Read32BitsHighLow(FILE *fp)
+ {
+@@ -196,5 +182,3 @@
+ void
+-Write32Bits(fp, i)
+-FILE *fp;
+-int i;
++EncoderInterface::Write32Bits(FILE *fp, int i)
+ {
+@@ -206,5 +190,3 @@
+ void
+-Write32BitsLowHigh(fp, i)
+-FILE *fp;
+-int i;
++EncoderInterface::Write32BitsLowHigh(FILE *fp, int i)
+ {
+@@ -216,5 +198,3 @@
+ void
+-Write32BitsHighLow(fp, i)
+-FILE *fp;
+-int i;
++EncoderInterface::Write32BitsHighLow(FILE *fp, int i)
+ {
+@@ -224,6 +204,3 @@
+ 
+-void ReadBytes(fp, p, n)
+-FILE	*fp;
+-char	*p;
+-int	n;
++void EncoderInterface::ReadBytes(FILE *fp, char *p, int n)
+ {
+@@ -233,6 +210,3 @@
+ 
+-void ReadBytesSwapped(fp, p, n)
+-FILE	*fp;
+-char	*p;
+-int	n;
++void EncoderInterface::ReadBytesSwapped(FILE *fp, char *p, int n)
+ {
+@@ -250,6 +224,3 @@
+ 
+-void WriteBytes(fp, p, n)
+-FILE	*fp;
+-char	*p;
+-int	n;
++void EncoderInterface::WriteBytes(FILE *fp, char *p, int n)
+ {
+@@ -259,6 +230,3 @@
+ 
+-void WriteBytesSwapped(fp, p, n)
+-FILE	*fp;
+-char	*p;
+-int	n;
++void EncoderInterface::WriteBytesSwapped(FILE *fp, char *p, int n)
+ {
+@@ -270,4 +238,3 @@
+ defdouble
+-ReadIeeeFloatHighLow(fp)
+-FILE *fp;
++EncoderInterface::ReadIeeeFloatHighLow(FILE *fp)
+ {
+@@ -280,4 +247,3 @@
+ defdouble
+-ReadIeeeFloatLowHigh(fp)
+-FILE *fp;
++EncoderInterface::ReadIeeeFloatLowHigh(FILE *fp)
+ {
+@@ -290,4 +256,3 @@
+ defdouble
+-ReadIeeeDoubleHighLow(fp)
+-FILE *fp;
++EncoderInterface::ReadIeeeDoubleHighLow(FILE *fp)
+ {
+@@ -300,4 +265,3 @@
+ defdouble
+-ReadIeeeDoubleLowHigh(fp)
+-FILE *fp;
++EncoderInterface::ReadIeeeDoubleLowHigh(FILE *fp)
+ {
+@@ -310,4 +274,3 @@
+ defdouble
+-ReadIeeeExtendedHighLow(fp)
+-FILE *fp;
++EncoderInterface::ReadIeeeExtendedHighLow(FILE *fp)
+ {
+@@ -320,4 +283,3 @@
+ defdouble
+-ReadIeeeExtendedLowHigh(fp)
+-FILE *fp;
++EncoderInterface::ReadIeeeExtendedLowHigh(FILE *fp)
+ {
+@@ -330,5 +292,3 @@
+ void
+-WriteIeeeFloatLowHigh(fp, num)
+-FILE *fp;
+-defdouble num;
++EncoderInterface::WriteIeeeFloatLowHigh(FILE *fp, defdouble num)
+ {
+@@ -341,5 +301,3 @@
+ void
+-WriteIeeeFloatHighLow(fp, num)
+-FILE *fp;
+-defdouble num;
++EncoderInterface::WriteIeeeFloatHighLow(FILE *fp, defdouble num)
+ {
+@@ -352,5 +310,3 @@
+ void
+-WriteIeeeDoubleLowHigh(fp, num)
+-FILE *fp;
+-defdouble num;
++EncoderInterface::WriteIeeeDoubleLowHigh(FILE *fp, defdouble num)
+ {
+@@ -363,5 +319,3 @@
+ void
+-WriteIeeeDoubleHighLow(fp, num)
+-FILE *fp;
+-defdouble num;
++EncoderInterface::WriteIeeeDoubleHighLow(FILE *fp, defdouble num)
+ {
+@@ -374,5 +328,3 @@
+ void
+-WriteIeeeExtendedLowHigh(fp, num)
+-FILE *fp;
+-defdouble num;
++EncoderInterface::WriteIeeeExtendedLowHigh(FILE *fp, defdouble num)
+ {
+@@ -386,5 +338,3 @@
+ void
+-WriteIeeeExtendedHighLow(fp, num)
+-FILE *fp;
+-defdouble num;
++EncoderInterface::WriteIeeeExtendedHighLow(FILE *fp, defdouble num)
+ {
+@@ -397,3 +347,3 @@
+ 
+-enum e_byte_order DetermineByteOrder()
++enum e_byte_order EncoderInterface::DetermineByteOrder()
+ {
+@@ -418,3 +368,3 @@
+ 
+-void SwapBytesInWords( short *loc, int words )
++void EncoderInterface::SwapBytesInWords( short *loc, int words )
+ {
+diff -bBru -1 ./8hz-mp3/portableio.h ./8hz-mp3-mine/portableio.h
+--- ./8hz-mp3/portableio.h	Tue May 12 11:48:25 1998
++++ ./8hz-mp3-mine/portableio.h	Wed Dec  2 00:00:41 1998
+@@ -63,38 +63 @@
+ 
+-extern CLINK int ReadByte(FILE *fp);
+-extern CLINK int Read16BitsLowHigh(FILE *fp);
+-extern CLINK int Read16BitsHighLow(FILE *fp);
+-extern CLINK void Write8Bits(FILE *fp, int i);
+-extern CLINK void Write16BitsLowHigh(FILE *fp, int i);
+-extern CLINK void Write16BitsHighLow(FILE *fp, int i);
+-extern CLINK int Read24BitsHighLow(FILE *fp);
+-extern CLINK int Read32Bits(FILE *fp);
+-extern CLINK int Read32BitsHighLow(FILE *fp);
+-extern CLINK void Write32Bits(FILE *fp, int i);
+-extern CLINK void Write32BitsLowHigh(FILE *fp, int i);
+-extern CLINK void Write32BitsHighLow(FILE *fp, int i);
+-extern CLINK void ReadBytes(FILE *fp, char *p, int n);
+-extern CLINK void ReadBytesSwapped(FILE *fp, char *p, int n);
+-extern CLINK void WriteBytes(FILE *fp, char *p, int n);
+-extern CLINK void WriteBytesSwapped(FILE *fp, char *p, int n);
+-extern CLINK defdouble ReadIeeeFloatHighLow(FILE *fp);
+-extern CLINK defdouble ReadIeeeFloatLowHigh(FILE *fp);
+-extern CLINK defdouble ReadIeeeDoubleHighLow(FILE *fp);
+-extern CLINK defdouble ReadIeeeDoubleLowHigh(FILE *fp);
+-extern CLINK defdouble ReadIeeeExtendedHighLow(FILE *fp);
+-extern CLINK defdouble ReadIeeeExtendedLowHigh(FILE *fp);
+-extern CLINK void WriteIeeeFloatLowHigh(FILE *fp, defdouble num);
+-extern CLINK void WriteIeeeFloatHighLow(FILE *fp, defdouble num);
+-extern CLINK void WriteIeeeDoubleLowHigh(FILE *fp, defdouble num);
+-extern CLINK void WriteIeeeDoubleHighLow(FILE *fp, defdouble num);
+-extern CLINK void WriteIeeeExtendedLowHigh(FILE *fp, defdouble num);
+-extern CLINK void WriteIeeeExtendedHighLow(FILE *fp, defdouble num);
+-
+-enum e_byte_order {order_unknown,order_bigEndian,order_littleEndian};
+-enum e_byte_order DetermineByteOrder();
+-void SwapBytesInWords(short *loc,int words);
+-
+-
+-#define	Read32BitsLowHigh(f)	Read32Bits(f)
+-#define WriteString(f,s)	fwrite(s,strlen(s),sizeof(char),f)
+-#endif
+Only in ./8hz-mp3-mine/: psy_data.c
+diff -bBru -1 ./8hz-mp3/reservoir.c ./8hz-mp3-mine/reservoir.c
+--- ./8hz-mp3/reservoir.c	Tue May 12 11:48:25 1998
++++ ./8hz-mp3-mine/reservoir.c	Tue Dec  1 22:36:38 1998
+@@ -1,16 +1,5 @@
+-#include <stdio.h>
+-#include <stdlib.h>
+-#include <math.h>
+-
+-#include "types.h"
+-#include "error.h"
+-#include "layer3.h"
+-#include "l3loop.h"
+-#include "huffman.h"
+-#include "l3bitstream.h"
+-#include "reservoir.h"
++
++#include "MP3Encoder.h"
+ 
+ /* Layer3 bit reservoir: Described in C.1.5.4.2.2 of the IS */
+-static int ResvSize = 0; /* in bits */
+-static int ResvMax  = 0; /* in bits */
+ 
+@@ -22,3 +11,3 @@
+ */
+-void ResvFrameBegin(L3_side_info_t *l3_side, int mean_bits, int frameLength )
++void EncoderInterface::ResvFrameBegin(L3_side_info_t *l3_side, int mean_bits, int frameLength )
+ {
+@@ -60,3 +49,3 @@
+ */
+-int ResvMaxBits (L3_side_info_t *l3_side, double *pe, int mean_bits )
++int EncoderInterface::ResvMaxBits (L3_side_info_t *, double *pe, int mean_bits )
+ {
+@@ -93,3 +82,3 @@
+ */
+-void ResvAdjust(gr_info *gi, L3_side_info_t *l3_side, int mean_bits )
++void EncoderInterface::ResvAdjust(gr_info *gi, L3_side_info_t *, int mean_bits )
+ {
+@@ -109,3 +98,3 @@
+ */
+-void ResvFrameEnd(L3_side_info_t *l3_side, int mean_bits )
++void EncoderInterface::ResvFrameEnd(L3_side_info_t *l3_side, int mean_bits )
+ {
+@@ -127,3 +116,3 @@
+     /* we must be byte aligned */
+-    if((over_bits = ResvSize % 8))
++    if((over_bits = ResvSize % 8) != 0)
+     {
+diff -bBru -1 ./8hz-mp3/reservoir.h ./8hz-mp3-mine/reservoir.h
+--- ./8hz-mp3/reservoir.h	Tue May 12 11:48:25 1998
++++ ./8hz-mp3-mine/reservoir.h	Tue Dec  1 22:34:46 1998
+@@ -6,6 +6,2 @@
+ 
+-void ResvFrameBegin(L3_side_info_t *l3_side, int mean_bits, int frameLength );
+-int  ResvMaxBits   (L3_side_info_t *l3_side, double *pe, int mean_bits );
+-void ResvAdjust    (gr_info *gi, L3_side_info_t *l3_side, int mean_bits );
+-void ResvFrameEnd  (L3_side_info_t *l3_side, int mean_bits );
+ 
+Only in ./8hz-mp3-mine/: sqrttab.c
+diff -bBru -1 ./8hz-mp3/sqrttab.h ./8hz-mp3-mine/sqrttab.h
+--- ./8hz-mp3/sqrttab.h	Wed May 13 08:10:20 1998
++++ ./8hz-mp3-mine/sqrttab.h	Tue Dec  1 22:38:24 1998
+@@ -1,3 +1,4 @@
++#include "MP3Encoder.h"
+ /* TABEL int->index ! */
+-short int2idx[10000] =
++const short EncoderInterface::int2idx[10000] =
+ {0,1,2,2,3,3,4,4,5,5,6,6,6,7,7,8,8,8,9,9,9,10,10,10,11,11,11,12,12,12,13,
+@@ -554,3 +555,3 @@
+ /* TABEL index->omslag ! */
+-float idx2dbl[1001] =
++float EncoderInterface::idx2dbl[1001] =
+ {0.000000,0.488815/*20*/,1.847400,3.546977/*80*/,5.485990,7.616150,9.908080,12.341640,
+diff -bBru -1 ./8hz-mp3/tables.c ./8hz-mp3-mine/tables.c
+--- ./8hz-mp3/tables.c	Sun May 31 18:15:11 1998
++++ ./8hz-mp3-mine/tables.c	Tue Dec  1 21:54:02 1998
+@@ -1,4 +1,3 @@
+ 
+-#include "types.h"
+-#include "tables.h"
++#include "MP3Encoder.h"
+ 
+@@ -9,3 +8,3 @@
+ 
+-struct scalefac_struct sfBandIndex[6] =
++const struct scalefac_struct EncoderInterface::sfBandIndex[6] =
+ {
+@@ -41,3 +40,3 @@
+ 
+-float absthr_0[] = {
++const float EncoderInterface::absthr_0[] = {
+ 	10156347392.00, 33708348.00, 3987838.75, 1269806.88, 614805.19, 372166.75, 256884.33, 192636.06,
+@@ -108,3 +107,3 @@
+ 
+-float absthr_1[] = {
++const float EncoderInterface::absthr_1[] = {
+ 	488357088.00, 5898447.00, 1131716.50, 466377.53, 265911.78, 180192.88, 135125.59, 108078.07,
+@@ -175,3 +174,3 @@
+ 
+-float absthr_2[] = {
++const float EncoderInterface::absthr_2[] = {
+ 	247592464.00, 3987838.75, 852584.69, 372166.75, 220667.11, 153016.27, 116879.30, 95003.05,
+@@ -242,3 +241,3 @@
+ 
+-double enwindow[] = {
++const double EncoderInterface::enwindow[] = {
+ 	0.000000, -0.000000, -0.000000, -0.000000, -0.000000, -0.000000, -0.000000, -0.000001, -0.000001, -0.000001,
+diff -bBru -1 ./8hz-mp3/tables.h ./8hz-mp3-mine/tables.h
+--- ./8hz-mp3/tables.h	Tue May 12 11:48:25 1998
++++ ./8hz-mp3-mine/tables.h	Tue Dec  1 21:52:21 1998
+@@ -3,14 +3,5 @@
+ 
+-struct scalefac_struct
+-{
+-   int l[23];
+-   int s[14];
+-};
+ 
+ 
+-extern struct scalefac_struct sfBandIndex[6]; 
+-extern float  absthr_0[];
+-extern float  absthr_1[];
+-extern float  absthr_2[];
+-extern double enwindow[];
++
+ 
+diff -bBru -1 ./8hz-mp3/types.h ./8hz-mp3-mine/types.h
+--- ./8hz-mp3/types.h	Tue May 12 11:48:25 1998
++++ ./8hz-mp3-mine/types.h	Wed Dec  2 19:45:37 1998
+@@ -5,4 +5,4 @@
+ #include <time.h>
+-#include "portableio.h"
+ 
++enum e_byte_order {order_unknown,order_bigEndian,order_littleEndian};
+ 
+@@ -26,9 +26,9 @@
+ typedef struct {
+-    FILE *file;
+-    int  type;
++//    FILE *file;
++//    int  type;
+     int  channels;
+-    int  bits;
++//    int  bits;
+     long samplerate;
+-    long total_samples;
+-    long length;
++//    long total_samples;
++//    long length;
+ } wave_t;
+@@ -36,3 +36,3 @@
+ typedef struct {
+-    FILE *file;
++//    FILE *file;
+     int  type;
+@@ -47,3 +47,3 @@
+     long bits_per_slot;
+-    long total_frames;
++//    long total_frames;
+     int  bitrate_index;
+@@ -59,6 +59,6 @@
+ typedef struct {
+-    time_t start_time;
++//    time_t start_time;
+     enum e_byte_order byte_order; 
+ 
+-    char* infile;
++//    char* infile;
+     wave_t wave;
+@@ -71,11 +71,3 @@
+ 
+-#ifndef bool
+-typedef unsigned char bool;
+-#endif
+-#ifndef true
+-#define true 1
+-#endif
+-#ifndef false
+-#define false 0
+-#endif
++
+
+diff -bBru -1 ./8hz-mp3/sqrttab.h ./8hz-mp3-mine/sqrttab.h
+--- ./8hz-mp3/sqrttab.h	Tue May 12 11:48:25 1998
++++ ./8hz-mp3-mine/sqrttab.h	Wed Dec  2 19:45:37 1998
+@@ -553,7 +553,7 @@
+
+
+ /* TABEL index->omslag ! */
+-float EncoderInterface::idx2dbl[1001] =
++const float EncoderInterface::idx2dbl[1001] =
+ {0.000000,0.488815/*20*/,1.847400,3.546977/*80*/,5.485990,7.616150,9.908080,12.341640,
+ 14.901970,17.577630,20.359420,23.239820,26.212480,29.272020,32.413740,
+ 35.633580,38.927900,42.293480,45.727420,49.227110,52.790160,56.414400,
+
+diff -bBru -1 ./8hz-mp3/psy_data.h ./8hz-mp3-mine/psy_data.h
+--- ./8hz-mp3/psy_data.h	Tue May 12 11:48:25 1998
++++ ./8hz-mp3-mine/psy_data.h	Wed Dec  2 19:45:37 1998
+@@ -1,6 +1,5 @@
+-#warning HURL, this should be different, lazyness....
+-
+-char* psy_data[] = {
++#include "MP3Encoder.h"
++const char* EncoderInterface::psy_data[] = {
+ "freq = 48000.0 partition = 61 ",
+ "No= 0 #lines= 1 minval=24.5 qthr=   4.532 norm=0.970 bval=   0.000",
+ "No= 1 #lines= 1 minval=24.5 qthr=   4.532 norm=0.755 bval=   0.469",

@@ -1,0 +1,43 @@
+#!/bin/sh
+TARFILE=8hz-mp3.src.v02b.tar.gz
+A=`query -a name=$TARFILE | tail -n 1 -`
+OURDIR=`dirname "$0"`
+
+if [ `echo $A | wc -w` == "0" ]; then
+	alert --info --modal "Can't find $TARFILE"
+	exit
+else
+	alert --info --modal "Preparing to expand
+$A
+into
+$OURDIR" "OK"
+
+fi
+
+cd $OURDIR/Source
+gunzip -c $A | tar -xf -
+patch -p 1 < ./diff.file
+rm ./8hz-mp3/main.c
+mv ./8hz-mp3/sqrttab.h ./8hz-mp3/sqrttab.c
+mv ./8hz-mp3/psy_data.h ./8hz-mp3/psy_data.c
+
+alert --info --modal "The source code has been patched.
+Starting to build KonaKoder. This will take a few
+minutes, so please be patient." "Build"
+
+#	determine wheather running on x86 or ppc
+MACHINE=`uname -m`
+if [ "$MACHINE" ==  "BePC" ]
+then
+	OBJ_DIR="obj.x86"
+	ln -s ./makefile.x86 ./makefile
+else
+	OBJ_DIR="obj.ppc"
+	ln -s ./makefile.ppc ./makefile
+fi
+
+make
+
+mv ./$OBJ_DIR/KonaKoder ..
+alert --info --modal "Building Complete. 
+Please enjoy your new copy of KonaKoder!"

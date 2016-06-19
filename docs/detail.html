@@ -1,0 +1,47 @@
+<html>
+<title>Under The Hood</title>
+<h1>Under The Hood</h1>
+This section provides some detail about how KonaKoder is put together. Information on the major classes that make up KonaKoder are here, along with details on the attributes it uses.
+<h2>The Classes</h2>
+<h3>MP3Encoder</h3>
+The MPEG encoder that KonaKoder uses is the 8Hz encoder. This encoder is, in turn, based upon the ISO reference encoder with some performance enhancements made. KonaKoder makes a number of structural changes to the 8Hz encoder, without changing much of the underlying code.
+<p>
+The 8Hz encoder was written with no concern for being thread safe. In it's original form, it is a mess of global and static variables. Since KonaKoder is capable of encoding multiple songs at once on a multiprocessor machine, this had to be changed. To acheive this, the encoder has been transformed into a C++ class with all global variables being instance members of the class. This allows KonaKoder to simply create an MP3Encoder object for each processor. The MP3Encoder class is a child of the BLooper class, so it runs in it's own thread. All communication is via BMessages. It can accept commands to create a new file, and to close the current file. It also accepts BMessages which contain blocks of audio data to be encoded. Upon receiving one of these blocks, it compresses it and adds it to the currently open file. After it finishes processing the block, it replies to the BMessage to ask for the next block of data.
+<h3>CDDBLooper</h3>
+The CDDBLooper class is also a child of the BLooper class. It is taken largely intact from the source code to Jukebox, written by Chip Paul. Minor modifications have been made to improve it's parsing of the Album / Artist data it receives from the CDDB server. It's operation is straightforward. It accepts a BMessage containing the table of contents from the CD telling it to look up the CDDB information. Once it completes the lookup, it sends a reply BMessage containing the CDDB info.
+<h3>CDInterface</h3>
+The CDInterface class acts as the interface to one CD player. It is a child of BLooper, and runs in its own thread. It has two main functions: reading the table of contents and managing the reading of raw audio data from the CD. Getting the TOC from a CDInterface is a simple matter of sending the proper message to it. The CDInterface will read the table of contents from the CD and return it in a reply message.
+<p>
+The process of reading audio data is a little more involved. The CDInterface class is designed to be able to feed audio data to multiple MP3Encoder objects. To accomplish this, it maintains a list of CDSession objects. The first step is to send it a BMessage telling it to create a new session. The message needs to specify which track to read and which MP3Encoder to send the data to. Once the session is created, the MP3Encoder can begin sending BMessages requesting blocks of audio data. After the song is encoded, the session should be closed with the appropriate message.
+<p>
+Each CDSession maintains state including the track it's reading, the first and last frame of the track, the next frame to send, and the MP3Encoder to send the data to. A CDSession also maintains a buffer of audio data to reduce the number of accesses to the CD player. Currently, it buffers 150 frames of audio data at a time. 
+<p>
+The CDInterface class also tries to ensure that the audio data is error free. Initially, it simply read the audio data from the CD and assumed it was correct. However, I found that some slightly damaged CD's would produce MP3 files with skips in them. It turns out that the CD player would occasionally return data from the wrong portion of the track, resulting is MP3 files that were jumbled in places. In order to work around this, CDInterface actually reads the data twice and compares the results. If they match the data is sent to the MP3Encoder. If they differ, it re-reads the data and tries again. It will continue to re-read the data until the number of differences falls below a certain threshold. While this slows down the encoding process, it produces much better results.
+<h3>CDView</h3>
+the CDView class is really the brains of the program. It controls the CDDBLooper, CDInterface, and MP3Encoder objects. It also presents the main user interface to KonaKoder. It will detect the number of CPU's on your system, and create an identical number of MP3Encoder objects. The CDView class was designed with multiple CD players in mind. Although KonaKoder will not currently handle multiple CD players, it would be an easy feature to add. It should be a simple matter of creating multiple CDViews, each one controlling a different CD player. The multiple views could be added to a BTabView (for example) for an easy user interface.
+<h3>Preference</h3>
+The Preference class was written by Marco Nelissen. It is the client code for his PrefServer program. It is used by KonaKoder to save and restore preferences. More information can be found on Marco's web site, or included with PrefServer.
+<h3>Supporting Classes</h3>
+KonaKoder includes a number of supporting classes which are fairly simple. These include the main EncoderApp class, a simple BWindow child class, and the PrefWindow class among others. Look around in the Source directory if you want more information.
+<h2>Attributes</h2>
+One of the main features of KonaKoder is the attributes it adds onto the MP3 files it creates. Check out the BeBook to find out more information on attributes in general. For completeness, here is a list of the attributes that KonaKoder uses. What they are should be obvious from the names.
+<pre>
+int32	Audio:Track
+string	Audio:Artist
+string	Audio:Album
+string	Audio:Genre
+string	Audio:Title
+int32	Audio:Year
+</pre>
+The template directory is another nice feature which unfortunately relies on some not very well documented magic. It relies on the fact that the Tracker saves the layout of a directory in attributes attached to the directory itself. KonaKoder simply copies these attributes from the template directory to the new directories it creates. This should always work, but it's possible that it will break at some point in the future if the Tracker changes the name of the attributes it uses. However, here is a list of the attributes that get copied. To be honest, I'm not sure exactly what data is in what attributes so KonaKoder just copies them all:
+<pre>
+_trk/columns		Column layout on PPC
+_trk/columns_le		Column layout on Intel
+_trk/viewstate		Setting of "View" option on PPC
+_trk/viewstate_le	Setting of "View" option on Intel
+_trk/windframe		Position and Size of window
+</pre>
+For details on how KonaKoder teaches the Tracker how to display MP3 attributes, take a look at the member function EncoderApp::CheckIndexes(). Note that KonaKoder takes special care to not remove any attributes that already existed. This is an easy mistake to make, and is sure to irritate users.
+<p>
+Copyright 1999 David Mitchell
+</html>
